@@ -11,11 +11,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.GroupAdd
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.Unarchive
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,9 +46,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.android.messaging.R
+import com.android.messaging.ui.conversation.v2.CONVERSATION_ADD_CONTACT_BUTTON_TEST_TAG
 import com.android.messaging.ui.conversation.v2.CONVERSATION_ADD_PEOPLE_BUTTON_TEST_TAG
+import com.android.messaging.ui.conversation.v2.CONVERSATION_ARCHIVE_BUTTON_TEST_TAG
 import com.android.messaging.ui.conversation.v2.CONVERSATION_CALL_BUTTON_TEST_TAG
+import com.android.messaging.ui.conversation.v2.CONVERSATION_DELETE_CONVERSATION_BUTTON_TEST_TAG
 import com.android.messaging.ui.conversation.v2.CONVERSATION_OVERFLOW_BUTTON_TEST_TAG
+import com.android.messaging.ui.conversation.v2.CONVERSATION_UNARCHIVE_BUTTON_TEST_TAG
 import com.android.messaging.ui.conversation.v2.metadata.model.ConversationMetadataUiState
 
 private val CONVERSATION_TOP_APP_BAR_TITLE_SPACING = 12.dp
@@ -58,8 +66,16 @@ internal fun ConversationTopAppBar(
     metadata: ConversationMetadataUiState,
     isAddPeopleVisible: Boolean = false,
     isCallVisible: Boolean = false,
+    isArchiveVisible: Boolean = false,
+    isUnarchiveVisible: Boolean = false,
+    isAddContactVisible: Boolean = false,
+    isDeleteConversationVisible: Boolean = false,
     onAddPeopleClick: () -> Unit,
     onCallClick: () -> Unit = {},
+    onArchiveClick: () -> Unit = {},
+    onUnarchiveClick: () -> Unit = {},
+    onAddContactClick: () -> Unit = {},
+    onDeleteConversationClick: () -> Unit = {},
     onTitleClick: () -> Unit,
     onNavigateBack: () -> Unit,
 ) {
@@ -89,9 +105,23 @@ internal fun ConversationTopAppBar(
                     onCallClick = onCallClick,
                 )
             }
-            if (isAddPeopleVisible) {
+            val isOverflowVisible = isAddPeopleVisible ||
+                isArchiveVisible ||
+                isUnarchiveVisible ||
+                isAddContactVisible ||
+                isDeleteConversationVisible
+            if (isOverflowVisible) {
                 ConversationTopAppBarOverflowMenu(
+                    isAddPeopleVisible = isAddPeopleVisible,
+                    isArchiveVisible = isArchiveVisible,
+                    isUnarchiveVisible = isUnarchiveVisible,
+                    isAddContactVisible = isAddContactVisible,
+                    isDeleteConversationVisible = isDeleteConversationVisible,
                     onAddPeopleClick = onAddPeopleClick,
+                    onArchiveClick = onArchiveClick,
+                    onUnarchiveClick = onUnarchiveClick,
+                    onAddContactClick = onAddContactClick,
+                    onDeleteConversationClick = onDeleteConversationClick,
                 )
             }
         },
@@ -221,7 +251,16 @@ private fun ConversationTopAppBarCallAction(
 
 @Composable
 private fun ConversationTopAppBarOverflowMenu(
+    isAddPeopleVisible: Boolean,
+    isArchiveVisible: Boolean,
+    isUnarchiveVisible: Boolean,
+    isAddContactVisible: Boolean,
+    isDeleteConversationVisible: Boolean,
     onAddPeopleClick: () -> Unit,
+    onArchiveClick: () -> Unit,
+    onUnarchiveClick: () -> Unit,
+    onAddContactClick: () -> Unit,
+    onDeleteConversationClick: () -> Unit,
 ) {
     var isExpanded by remember { mutableStateOf(value = false) }
 
@@ -242,23 +281,91 @@ private fun ConversationTopAppBarOverflowMenu(
             isExpanded = false
         },
     ) {
-        DropdownMenuItem(
-            modifier = Modifier.testTag(CONVERSATION_ADD_PEOPLE_BUTTON_TEST_TAG),
-            text = {
-                Text(text = stringResource(id = R.string.conversation_add_people))
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Rounded.GroupAdd,
-                    contentDescription = null,
-                )
-            },
-            onClick = {
-                @Suppress("AssignedValueIsNeverRead")
-                isExpanded = false
-                onAddPeopleClick()
-            },
-        )
+        val dismissAndInvoke: (() -> Unit) -> Unit = { action ->
+            @Suppress("AssignedValueIsNeverRead")
+            isExpanded = false
+            action()
+        }
+
+        if (isAddPeopleVisible) {
+            DropdownMenuItem(
+                modifier = Modifier.testTag(CONVERSATION_ADD_PEOPLE_BUTTON_TEST_TAG),
+                text = {
+                    Text(text = stringResource(id = R.string.conversation_add_people))
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.GroupAdd,
+                        contentDescription = null,
+                    )
+                },
+                onClick = { dismissAndInvoke(onAddPeopleClick) },
+            )
+        }
+
+        if (isAddContactVisible) {
+            DropdownMenuItem(
+                modifier = Modifier.testTag(CONVERSATION_ADD_CONTACT_BUTTON_TEST_TAG),
+                text = {
+                    Text(text = stringResource(id = R.string.action_add_contact))
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.PersonAdd,
+                        contentDescription = null,
+                    )
+                },
+                onClick = { dismissAndInvoke(onAddContactClick) },
+            )
+        }
+
+        if (isArchiveVisible) {
+            DropdownMenuItem(
+                modifier = Modifier.testTag(CONVERSATION_ARCHIVE_BUTTON_TEST_TAG),
+                text = {
+                    Text(text = stringResource(id = R.string.action_archive))
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Archive,
+                        contentDescription = null,
+                    )
+                },
+                onClick = { dismissAndInvoke(onArchiveClick) },
+            )
+        }
+
+        if (isUnarchiveVisible) {
+            DropdownMenuItem(
+                modifier = Modifier.testTag(CONVERSATION_UNARCHIVE_BUTTON_TEST_TAG),
+                text = {
+                    Text(text = stringResource(id = R.string.action_unarchive))
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Unarchive,
+                        contentDescription = null,
+                    )
+                },
+                onClick = { dismissAndInvoke(onUnarchiveClick) },
+            )
+        }
+
+        if (isDeleteConversationVisible) {
+            DropdownMenuItem(
+                modifier = Modifier.testTag(CONVERSATION_DELETE_CONVERSATION_BUTTON_TEST_TAG),
+                text = {
+                    Text(text = stringResource(id = R.string.action_delete))
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Delete,
+                        contentDescription = null,
+                    )
+                },
+                onClick = { dismissAndInvoke(onDeleteConversationClick) },
+            )
+        }
     }
 }
 
