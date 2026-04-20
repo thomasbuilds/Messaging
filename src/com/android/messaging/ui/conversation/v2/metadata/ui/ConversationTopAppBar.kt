@@ -40,13 +40,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.android.messaging.R
 import com.android.messaging.ui.conversation.v2.CONVERSATION_ADD_CONTACT_BUTTON_TEST_TAG
 import com.android.messaging.ui.conversation.v2.CONVERSATION_ADD_PEOPLE_BUTTON_TEST_TAG
@@ -165,7 +168,7 @@ private fun rememberConversationTopAppBarPresentation(
     val subtitle = conversationSubtitle(
         metadata = metadata,
     )
-    val isGroupConversation = conversationIsGroup(
+    val avatar = conversationAvatar(
         metadata = metadata,
     )
 
@@ -173,12 +176,12 @@ private fun rememberConversationTopAppBarPresentation(
         metadata,
         title,
         subtitle,
-        isGroupConversation,
+        avatar,
     ) {
         ConversationTopAppBarPresentation(
             title = title,
             subtitle = subtitle,
-            isGroupConversation = isGroupConversation,
+            avatar = avatar,
         )
     }
 }
@@ -200,7 +203,7 @@ private fun ConversationTopAppBarTitle(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ConversationAvatar(
-            isGroupConversation = presentation.isGroupConversation,
+            avatar = presentation.avatar,
         )
 
         ConversationTopAppBarText(
@@ -386,7 +389,41 @@ private fun ConversationTopAppBarOverflowMenuItem(
 
 @Composable
 private fun ConversationAvatar(
-    isGroupConversation: Boolean,
+    avatar: ConversationMetadataUiState.Avatar,
+) {
+    when (avatar) {
+        ConversationMetadataUiState.Avatar.Group -> {
+            ConversationAvatarFallback(
+                icon = Icons.Rounded.Group,
+            )
+        }
+
+        is ConversationMetadataUiState.Avatar.Single -> {
+            when {
+                avatar.photoUri.isNullOrBlank() -> {
+                    ConversationAvatarFallback(
+                        icon = Icons.Rounded.Person,
+                    )
+                }
+
+                else -> {
+                    AsyncImage(
+                        model = avatar.photoUri,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(size = CONVERSATION_TOP_APP_BAR_AVATAR_SIZE)
+                            .clip(shape = CircleShape),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConversationAvatarFallback(
+    icon: ImageVector,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.secondaryContainer,
@@ -399,14 +436,31 @@ private fun ConversationAvatar(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = when {
-                    isGroupConversation -> Icons.Rounded.Group
-                    else -> Icons.Rounded.Person
-                },
+                imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(size = CONVERSATION_TOP_APP_BAR_AVATAR_ICON_SIZE),
             )
         }
+    }
+}
+
+private fun conversationAvatar(
+    metadata: ConversationMetadataUiState,
+): ConversationMetadataUiState.Avatar {
+    return when (metadata) {
+        ConversationMetadataUiState.Loading -> {
+            ConversationMetadataUiState.Avatar.Single(
+                photoUri = null,
+            )
+        }
+
+        ConversationMetadataUiState.Unavailable -> {
+            ConversationMetadataUiState.Avatar.Single(
+                photoUri = null,
+            )
+        }
+
+        is ConversationMetadataUiState.Present -> metadata.avatar
     }
 }
 
@@ -434,7 +488,9 @@ private fun conversationIsGroup(
     return when (metadata) {
         ConversationMetadataUiState.Loading -> false
         ConversationMetadataUiState.Unavailable -> false
-        is ConversationMetadataUiState.Present -> metadata.isGroupConversation
+        is ConversationMetadataUiState.Present -> {
+            metadata.avatar is ConversationMetadataUiState.Avatar.Group
+        }
     }
 }
 
@@ -449,7 +505,7 @@ private fun conversationSubtitle(
 
         is ConversationMetadataUiState.Present -> {
             when {
-                metadata.isGroupConversation && metadata.participantCount > 1 -> {
+                metadata.participantCount > 1 -> {
                     pluralStringResource(
                         id = R.plurals.wearable_participant_count,
                         count = metadata.participantCount,
@@ -467,5 +523,5 @@ private fun conversationSubtitle(
 private data class ConversationTopAppBarPresentation(
     val title: String,
     val subtitle: String?,
-    val isGroupConversation: Boolean,
+    val avatar: ConversationMetadataUiState.Avatar,
 )
