@@ -83,7 +83,7 @@ internal fun ConversationMediaReviewScene(
         initiallyReviewedContentUri = initiallyReviewedContentUri,
         reviewRequestSequence = reviewRequestSequence,
         photoPickerSourceContentUriByAttachmentContentUri =
-            photoPickerSourceContentUriByAttachmentContentUri,
+        photoPickerSourceContentUriByAttachmentContentUri,
     )
 
     val imeBottomPadding = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
