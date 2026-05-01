@@ -231,18 +231,25 @@ internal data class DraftEditorState(
             effectiveDraft.hasContent
     }
 
-    fun markPersistedIfUnchanged(saveRequest: DraftSaveRequest): DraftEditorState {
+    fun withPersistedSaveResult(saveRequest: DraftSaveRequest): DraftEditorState {
         return when {
             conversationId != saveRequest.conversationId -> this
 
-            effectiveDraft != saveRequest.draft -> this
+            effectiveDraft == saveRequest.draft -> {
+                copy(
+                    persistedDraft = saveRequest.draft,
+                    localEdits = ConversationDraftEdits(),
+                    isLoaded = true,
+                    pendingSentDraft = null,
+                )
+            }
 
-            else -> copy(
-                persistedDraft = saveRequest.draft,
-                localEdits = ConversationDraftEdits(),
-                isLoaded = true,
-                pendingSentDraft = null,
-            )
+            else -> {
+                rebaseVisibleDraftOnPersistedDraft(
+                    persistedDraft = saveRequest.draft,
+                    shouldKeepPendingSentDraft = false,
+                )
+            }
         }
     }
 

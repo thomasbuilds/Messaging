@@ -289,7 +289,7 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
             }
 
             updateDraftEditorState { currentDraftEditorState ->
-                currentDraftEditorState.markPersistedIfUnchanged(
+                currentDraftEditorState.withPersistedSaveResult(
                     saveRequest = saveRequest,
                 )
             }
@@ -640,16 +640,31 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
         draftEditorState.update { currentDraftEditorState ->
             val updatedDraftEditorState = transform(currentDraftEditorState)
             val visibleState = updatedDraftEditorState.visibleState
-            val visibleSendProtocol = when {
-                visibleState.draft.hasContent -> _state.value.sendProtocol
-                else -> ConversationDraftSendProtocol.SMS
-            }
+            val visibleSendProtocol = resolveVisibleSendProtocol(
+                previousState = _state.value,
+                visibleState = visibleState,
+            )
 
             _state.value = visibleState.copy(
                 sendProtocol = visibleSendProtocol,
             )
 
             updatedDraftEditorState
+        }
+    }
+
+    private fun resolveVisibleSendProtocol(
+        previousState: ConversationDraftState,
+        visibleState: ConversationDraftState,
+    ): ConversationDraftSendProtocol {
+        val visibleDraft = visibleState.draft
+        val previousDraft = previousState.draft
+
+        return when {
+            !visibleDraft.hasContent -> ConversationDraftSendProtocol.SMS
+            visibleDraft.isMms -> ConversationDraftSendProtocol.MMS
+            previousDraft.isMms -> ConversationDraftSendProtocol.SMS
+            else -> previousState.sendProtocol
         }
     }
 
