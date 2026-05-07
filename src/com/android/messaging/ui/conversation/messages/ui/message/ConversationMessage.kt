@@ -2,28 +2,21 @@ package com.android.messaging.ui.conversation.messages.ui.message
 
 import android.content.Context
 import android.text.format.DateUtils
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.android.messaging.R
@@ -231,102 +224,29 @@ private fun ConversationMessageContent(
     onMessageLongClick: () -> Unit,
     onMessageResendClick: () -> Unit,
 ) {
-    val bubbleInteractionModifier = conversationMessageBubbleInteractionModifier(
-        message = message,
-        isSelected = isSelected,
-        isSelectionMode = isSelectionMode,
-        layout = layout,
-        onMessageClick = onMessageClick,
-        onMessageLongClick = onMessageLongClick,
-        onMessageResendClick = onMessageResendClick,
-    )
-
     Column(
-        modifier = Modifier.widthIn(max = maxBubbleWidth),
         horizontalAlignment = messageContentHorizontalAlignment(message = message),
     ) {
-        ConversationMessageBubble(
-            modifier = bubbleInteractionModifier,
+        ConversationMessageBubbleRow(
             message = message,
             isSelected = isSelected,
             isSelectionMode = isSelectionMode,
             layout = layout,
             maxBubbleWidth = maxBubbleWidth,
-            onAttachmentClick = { contentType, contentUri ->
-                when {
-                    isSelectionMode -> {
-                        onMessageClick()
-                    }
-
-                    message.canResendMessage -> {
-                        onMessageResendClick()
-                    }
-
-                    else -> {
-                        onAttachmentClick(contentType, contentUri)
-                    }
-                }
-            },
-            onExternalUriClick = { uri ->
-                when {
-                    isSelectionMode -> {
-                        onMessageClick()
-                    }
-
-                    message.canResendMessage -> {
-                        onMessageResendClick()
-                    }
-
-                    else -> {
-                        onExternalUriClick(uri)
-                    }
-                }
-            },
+            onAttachmentClick = onAttachmentClick,
+            onExternalUriClick = onExternalUriClick,
+            onMessageClick = onMessageClick,
             onMessageLongClick = onMessageLongClick,
+            onMessageResendClick = onMessageResendClick,
         )
 
-        ConversationMessageMetadata(
+        ConversationMessageMetadataRow(
             message = message,
-            metadataText = layout.metadataText,
+            isSelectionMode = isSelectionMode,
+            layout = layout,
+            maxBubbleWidth = maxBubbleWidth,
         )
     }
-}
-
-@Composable
-private fun conversationMessageBubbleInteractionModifier(
-    message: ConversationMessageUiModel,
-    isSelected: Boolean,
-    isSelectionMode: Boolean,
-    layout: ConversationMessageLayout,
-    onMessageClick: () -> Unit,
-    onMessageLongClick: () -> Unit,
-    onMessageResendClick: () -> Unit,
-): Modifier {
-    val hapticFeedback = LocalHapticFeedback.current
-    return Modifier
-        .clip(shape = layout.bubbleShape)
-        .semantics {
-            selected = isSelected
-        }
-        .combinedClickable(
-            enabled = true,
-            onClick = {
-                when {
-                    isSelectionMode -> {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.ContextClick)
-                        onMessageClick()
-                    }
-
-                    message.canResendMessage -> {
-                        onMessageResendClick()
-                    }
-                }
-            },
-            onLongClick = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                onMessageLongClick()
-            },
-        )
 }
 
 private fun messageContentHorizontalAlignment(
