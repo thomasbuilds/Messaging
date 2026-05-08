@@ -4,6 +4,7 @@ import com.android.messaging.data.conversation.mapper.ConversationDraftMessageDa
 import com.android.messaging.data.conversation.model.draft.ConversationDraft
 import com.android.messaging.data.conversation.model.draft.ConversationDraftAttachment
 import com.android.messaging.data.conversation.model.send.ConversationSendData
+import com.android.messaging.data.conversation.repository.ConversationSubscriptionsRepository
 import com.android.messaging.data.conversation.repository.ConversationsRepository
 import com.android.messaging.datamodel.action.InsertNewMessageAction
 import com.android.messaging.datamodel.data.MessageData
@@ -14,11 +15,13 @@ import com.android.messaging.domain.conversation.usecase.draft.exception.Convers
 import com.android.messaging.domain.conversation.usecase.draft.exception.ConversationSimNotReadyException
 import com.android.messaging.domain.conversation.usecase.draft.exception.DraftDispatchFailedException
 import com.android.messaging.domain.conversation.usecase.draft.exception.EmptyConversationDraftException
+import com.android.messaging.domain.conversation.usecase.draft.exception.MessageLimitExceededException
 import com.android.messaging.domain.conversation.usecase.draft.exception.MissingSelfPhoneNumberForGroupMmsException
 import com.android.messaging.domain.conversation.usecase.draft.exception.SendConversationDraftException
 import com.android.messaging.domain.conversation.usecase.draft.exception.TooManyVideoAttachmentsException
 import com.android.messaging.domain.conversation.usecase.draft.exception.UnknownConversationRecipientException
 import com.android.messaging.domain.conversation.usecase.draft.model.ConversationDraftSendProtocol
+import com.android.messaging.sms.MmsConfig
 import com.android.messaging.sms.MmsUtils
 import com.android.messaging.util.ContentType
 import com.android.messaging.util.PhoneUtils
@@ -33,11 +36,13 @@ internal interface SendConversationDraft {
     operator fun invoke(
         conversationId: String,
         draft: ConversationDraft,
+        ignoreMessageSizeLimit: Boolean = false,
     ): Flow<Unit>
 }
 
 internal class SendConversationDraftImpl @Inject constructor(
     private val conversationsRepository: ConversationsRepository,
+    private val conversationSubscriptionsRepository: ConversationSubscriptionsRepository,
     private val getConversationDraftSendProtocol: GetConversationDraftSendProtocol,
     private val conversationDraftMessageDataMapper: ConversationDraftMessageDataMapper,
     @param:IoDispatcher
@@ -48,12 +53,14 @@ internal class SendConversationDraftImpl @Inject constructor(
     override operator fun invoke(
         conversationId: String,
         draft: ConversationDraft,
+        ignoreMessageSizeLimit: Boolean,
     ): Flow<Unit> {
         return unitFlow {
             try {
                 validateAndSendDraft(
                     conversationId = conversationId,
                     draft = draft,
+                    ignoreMessageSizeLimit = ignoreMessageSizeLimit,
                 )
             } catch (exception: Exception) {
                 if (exception is CancellationException) {
@@ -85,6 +92,7 @@ internal class SendConversationDraftImpl @Inject constructor(
     private fun validateAndSendDraft(
         conversationId: String,
         draft: ConversationDraft,
+        ignoreMessageSizeLimit: Boolean,
     ) {
         validateDraftBasics(
             conversationId = conversationId,
@@ -120,6 +128,13 @@ internal class SendConversationDraftImpl @Inject constructor(
         )
 
         message.consolidateText()
+
+        validateMappedMessageForSend(
+            conversationId = conversationId,
+            message = message,
+            selfSubId = selfSubId,
+            ignoreMessageSizeLimit = ignoreMessageSizeLimit,
+        )
 
         insertNewMessageWithLegacySelfLock(
             message = message,
@@ -229,6 +244,38 @@ internal class SendConversationDraftImpl @Inject constructor(
                 conversationId = conversationId,
                 videoAttachmentCount = videoAttachmentCount,
             )
+        }
+    }
+
+    private fun validateMappedMessageForSend(
+        conversationId: String,
+        message: MessageData,
+        selfSubId: Int,
+        ignoreMessageSizeLimit: Boolean,
+    ) {
+        if (ignoreMessageSizeLimit) {
+            return
+        }
+
+        val attachments = message.parts.filter { part -> part.isAttachment }
+
+        if (attachments.size > conversationSubscriptionsRepository.resolveAttachmentLimit()) {
+            throw MessageLimitExceededException(conversationId = conversationId)
+        }
+
+        val totalAttachmentSize = attachments.sumOf { attachment ->
+            attachment.minimumSizeInBytesForSending
+        }
+
+        if (totalAttachmentSize > resolveMaxMessageSize(selfSubId = selfSubId)) {
+            throw MessageLimitExceededException(conversationId = conversationId)
+        }
+    }
+
+    private fun resolveMaxMessageSize(selfSubId: Int): Int {
+        return when {
+            selfSubId <= ParticipantData.DEFAULT_SELF_SUB_ID -> MmsConfig.getMaxMaxMessageSize()
+            else -> MmsConfig.get(selfSubId).maxMessageSize
         }
     }
 

@@ -19,6 +19,7 @@ internal fun ConversationMediaCaptureRoute(
     captureMode: ConversationCaptureMode,
     onClose: () -> Unit,
     onRequestAudioPermission: () -> Unit,
+    onAttachmentStartRequest: () -> Boolean,
     onShowReview: (String) -> Unit,
     onCapturedMediaReady: (ConversationCapturedMedia) -> Unit,
     onCaptureModeChange: (ConversationCaptureMode) -> Unit,
@@ -46,38 +47,32 @@ internal fun ConversationMediaCaptureRoute(
             }
             onClose()
         },
-        onRequestAudioPermission = onRequestAudioPermission,
+        onRequestAudioPermission = {
+            if (onAttachmentStartRequest()) {
+                onRequestAudioPermission()
+            }
+        },
         onPhotoCaptureClick = {
             handlePhotoCaptureRequest(
                 cameraController = cameraController,
+                onAttachmentStartRequest = onAttachmentStartRequest,
                 onCapturedMediaReady = onCapturedMediaReady,
                 onShowReview = onShowReview,
             )
         },
-        onPhotoModeClick = {
-            onCaptureModeChange(ConversationCaptureMode.Photo)
-        },
-        onSwitchCameraClick = {
-            handleSwitchCameraRequest(
-                cameraController = cameraController,
-            )
-        },
-        onToggleFlashClick = {
-            handleToggleFlashRequest(
-                cameraController = cameraController,
-            )
-        },
+        onPhotoModeClick = { onCaptureModeChange(ConversationCaptureMode.Photo) },
+        onSwitchCameraClick = { handleSwitchCameraRequest(cameraController) },
+        onToggleFlashClick = { handleToggleFlashRequest(cameraController) },
         onVideoCaptureClick = {
             handleVideoCaptureRequest(
                 cameraController = cameraController,
                 isRecording = isRecording.value,
+                onAttachmentStartRequest = onAttachmentStartRequest,
                 onCapturedMediaReady = onCapturedMediaReady,
                 onShowReview = onShowReview,
             )
         },
-        onVideoModeClick = {
-            onCaptureModeChange(ConversationCaptureMode.Video)
-        },
+        onVideoModeClick = { onCaptureModeChange(ConversationCaptureMode.Video) },
         recordingDurationMillis = recordingDurationMillis.value,
     )
 }

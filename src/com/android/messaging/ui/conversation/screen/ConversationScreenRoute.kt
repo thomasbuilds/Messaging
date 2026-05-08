@@ -42,9 +42,11 @@ internal fun rememberOpenContactPickerCallback(
         screenModel.onContactCardPicked(contactUri = contactUri?.toString())
     }
 
-    return remember(contactPickerLauncher) {
+    return remember(screenModel, contactPickerLauncher) {
         {
-            contactPickerLauncher.launch(input = null)
+            if (screenModel.tryStartAddingAttachment()) {
+                contactPickerLauncher.launch(input = null)
+            }
         }
     }
 }
@@ -66,24 +68,34 @@ internal fun rememberAudioRecordingStartRequest(
         val startMode = pendingAudioRecordingStartMode
         pendingAudioRecordingStartMode = PendingAudioRecordingStartMode.None
 
-        if (isGranted) {
-            startAudioRecording(
-                screenModel = screenModel,
-                startMode = startMode,
-            )
+        when {
+            isGranted -> {
+                startAudioRecording(
+                    screenModel = screenModel,
+                    startMode = startMode,
+                )
+            }
         }
     }
 
     return remember(screenModel, permissionState, audioPermissionLauncher) {
         { startMode ->
-            if (permissionState.audioPermissionGranted) {
-                startAudioRecording(
-                    screenModel = screenModel,
-                    startMode = startMode,
-                )
-            } else {
-                pendingAudioRecordingStartMode = startMode
-                audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            val canStartAddingAttachment = screenModel.tryStartAddingAttachment()
+
+            when {
+                !canStartAddingAttachment -> Unit
+
+                permissionState.audioPermissionGranted -> {
+                    startAudioRecording(
+                        screenModel = screenModel,
+                        startMode = startMode,
+                    )
+                }
+
+                else -> {
+                    pendingAudioRecordingStartMode = startMode
+                    audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }
             }
         }
     }
@@ -286,6 +298,7 @@ private fun ConversationMediaPickerOverlayHost(
             uiState.photoPickerSourceContentUriByAttachmentContentUri,
         onPhotoPickerMediaSelected = screenModel::onPhotoPickerMediaSelected,
         onPhotoPickerMediaDeselected = screenModel::onPhotoPickerMediaDeselected,
+        onAttachmentStartRequest = screenModel::tryStartAddingAttachment,
         onCapturedMediaReady = screenModel::onCapturedMediaReady,
         onSendClick = screenModel::onSendClick,
     )

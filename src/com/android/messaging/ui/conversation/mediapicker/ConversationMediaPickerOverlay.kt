@@ -35,6 +35,7 @@ internal fun ConversationMediaPickerOverlay(
     photoPickerSourceContentUriByAttachmentContentUri: ImmutableMap<String, String>,
     onPhotoPickerMediaSelected: (List<String>) -> Unit,
     onPhotoPickerMediaDeselected: (List<String>) -> Unit,
+    onAttachmentStartRequest: () -> Boolean,
     onCapturedMediaReady: (ConversationCapturedMedia) -> Unit,
     onSendClick: () -> Unit,
 ) {
@@ -91,6 +92,7 @@ internal fun ConversationMediaPickerOverlay(
             photoPickerSourceContentUriByAttachmentContentUri,
             onPhotoPickerMediaSelected = onPhotoPickerMediaSelected,
             onPhotoPickerMediaDeselected = onPhotoPickerMediaDeselected,
+            onAttachmentStartRequest = onAttachmentStartRequest,
             onRequestAudioPermission = {
                 audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             },

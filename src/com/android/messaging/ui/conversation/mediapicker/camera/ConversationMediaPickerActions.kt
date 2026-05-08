@@ -6,9 +6,14 @@ import com.android.messaging.util.UiUtils
 
 internal fun handlePhotoCaptureRequest(
     cameraController: ConversationCameraController,
+    onAttachmentStartRequest: () -> Boolean,
     onCapturedMediaReady: (ConversationCapturedMedia) -> Unit,
     onShowReview: (String) -> Unit,
 ) {
+    if (!onAttachmentStartRequest()) {
+        return
+    }
+
     cameraController.capturePhoto(
         onCaptured = { capturedMedia ->
             onCapturedMediaReady(capturedMedia)
@@ -45,11 +50,16 @@ internal fun handleToggleFlashRequest(cameraController: ConversationCameraContro
 internal fun handleVideoCaptureRequest(
     cameraController: ConversationCameraController,
     isRecording: Boolean,
+    onAttachmentStartRequest: () -> Boolean,
     onCapturedMediaReady: (ConversationCapturedMedia) -> Unit,
     onShowReview: (String) -> Unit,
 ) {
     if (isRecording) {
         cameraController.stopVideoRecording()
+        return
+    }
+
+    if (!onAttachmentStartRequest()) {
         return
     }
 

@@ -13,6 +13,7 @@ internal data class ConversationScreenScaffoldUiState(
     val canUnarchive: Boolean = false,
     val canAddContact: Boolean = false,
     val canDeleteConversation: Boolean = false,
+    val attachmentLimitWarning: ConversationAttachmentLimitWarning? = null,
     val isDeleteConversationConfirmationVisible: Boolean = false,
     val metadata: ConversationMetadataUiState = ConversationMetadataUiState.Loading,
     val messages: ConversationMessagesUiState = ConversationMessagesUiState.Loading,

@@ -1,6 +1,7 @@
 package com.android.messaging.ui.conversation.mediapicker.delegate
 
 import com.android.messaging.R
+import com.android.messaging.data.conversation.model.draft.ConversationDraftAttachment
 import com.android.messaging.data.conversation.model.draft.PhotoPickerDraftAttachment
 import com.android.messaging.data.media.model.ConversationCapturedMedia
 import com.android.messaging.data.media.model.PhotoPickerDraftAttachmentResult
@@ -101,9 +102,18 @@ internal class ConversationMediaPickerDelegateImpl @Inject constructor(
     }
 
     override fun onPhotoPickerMediaSelected(contentUris: List<String>) {
-        claimNewPhotoPickerContentUris(contentUris = contentUris)
-            .takeIf { it.isNotEmpty() }
-            ?.let(::launchPhotoPickerAttachmentResolution)
+        val claimedContentUris = claimNewPhotoPickerContentUris(contentUris = contentUris)
+
+        if (claimedContentUris.isEmpty()) {
+            return
+        }
+
+        if (!conversationDraftDelegate.tryStartAddingAttachment()) {
+            releasePhotoPickerContentUris(contentUris = claimedContentUris)
+            return
+        }
+
+        launchPhotoPickerAttachmentResolution(contentUris = claimedContentUris)
     }
 
     private fun claimNewPhotoPickerContentUris(contentUris: List<String>): List<String> {
@@ -165,27 +175,71 @@ internal class ConversationMediaPickerDelegateImpl @Inject constructor(
     private fun onPhotoPickerAttachmentResolved(
         photoPickerAttachment: PhotoPickerDraftAttachment,
     ) {
-        val shouldDeleteTemporaryAttachment = synchronized(photoPickerAttachmentLock) {
-            val sourceContentUri = photoPickerAttachment.sourceContentUri
-            if (!photoPickerContentUris.contains(sourceContentUri)) {
-                return@synchronized true
+        val sourceContentUri = photoPickerAttachment.sourceContentUri
+        val draftAttachment = photoPickerAttachment.draftAttachment
+
+        if (!isPhotoPickerContentUriSelected(contentUri = sourceContentUri)) {
+            deleteTemporaryAttachment(contentUri = draftAttachment.contentUri)
+            return
+        }
+
+        val wasAddedToDraft = addDraftAttachmentIfAccepted(draftAttachment = draftAttachment)
+        val wasRegistered = wasAddedToDraft && registerPhotoPickerAttachmentIfStillSelected(
+            photoPickerAttachment = photoPickerAttachment,
+        )
+
+        if (!wasRegistered) {
+            discardUnregisteredPhotoPickerAttachment(
+                sourceContentUri = sourceContentUri,
+                attachmentContentUri = draftAttachment.contentUri,
+                wasAddedToDraft = wasAddedToDraft,
+            )
+        }
+    }
+
+    private fun isPhotoPickerContentUriSelected(contentUri: String): Boolean {
+        return synchronized(photoPickerAttachmentLock) {
+            photoPickerContentUris.contains(contentUri)
+        }
+    }
+
+    private fun addDraftAttachmentIfAccepted(
+        draftAttachment: ConversationDraftAttachment,
+    ): Boolean {
+        val acceptedAttachments = conversationDraftDelegate.addAttachments(
+            attachments = listOf(draftAttachment),
+        )
+
+        return acceptedAttachments.any { acceptedAttachment ->
+            acceptedAttachment.contentUri == draftAttachment.contentUri
+        }
+    }
+
+    private fun registerPhotoPickerAttachmentIfStillSelected(
+        photoPickerAttachment: PhotoPickerDraftAttachment,
+    ): Boolean {
+        return synchronized(photoPickerAttachmentLock) {
+            if (!photoPickerContentUris.contains(photoPickerAttachment.sourceContentUri)) {
+                return@synchronized false
             }
 
             registerPhotoPickerAttachment(photoPickerAttachment)
-            conversationDraftDelegate.addAttachments(
-                attachments = listOf(
-                    photoPickerAttachment.draftAttachment,
-                ),
-            )
+            true
+        }
+    }
 
-            false
+    private fun discardUnregisteredPhotoPickerAttachment(
+        sourceContentUri: String,
+        attachmentContentUri: String,
+        wasAddedToDraft: Boolean,
+    ) {
+        releasePhotoPickerContentUri(sourceContentUri)
+
+        if (wasAddedToDraft) {
+            conversationDraftDelegate.removeAttachment(attachmentContentUri)
         }
 
-        if (shouldDeleteTemporaryAttachment) {
-            deleteTemporaryAttachment(
-                contentUri = photoPickerAttachment.draftAttachment.contentUri,
-            )
-        }
+        deleteTemporaryAttachment(attachmentContentUri)
     }
 
     private fun releasePhotoPickerContentUri(contentUri: String): Boolean {
@@ -228,13 +282,19 @@ internal class ConversationMediaPickerDelegateImpl @Inject constructor(
     }
 
     override fun onCapturedMediaReady(capturedMedia: ConversationCapturedMedia) {
-        conversationDraftDelegate.addAttachments(
-            attachments = listOf(
-                conversationDraftAttachmentMapper.map(
-                    capturedMedia = capturedMedia,
-                ),
-            ),
+        val attachment = conversationDraftAttachmentMapper.map(capturedMedia)
+
+        val acceptedAttachments = conversationDraftDelegate.addAttachments(
+            attachments = listOf(attachment),
         )
+
+        val wasAccepted = acceptedAttachments.any { acceptedAttachment ->
+            acceptedAttachment.contentUri == attachment.contentUri
+        }
+
+        if (!wasAccepted) {
+            deleteTemporaryAttachment(attachment.contentUri)
+        }
     }
 
     override fun onContactCardPicked(contactUri: String?) {

@@ -28,6 +28,7 @@ import com.android.messaging.ui.conversation.messages.delegate.ConversationMessa
 import com.android.messaging.ui.conversation.messages.model.message.ConversationMessagesUiState
 import com.android.messaging.ui.conversation.metadata.delegate.ConversationMetadataDelegate
 import com.android.messaging.ui.conversation.metadata.model.ConversationMetadataUiState
+import com.android.messaging.ui.conversation.screen.model.ConversationAttachmentLimitWarning
 import com.android.messaging.ui.conversation.screen.model.ConversationMediaPickerOverlayUiState
 import com.android.messaging.ui.conversation.screen.model.ConversationMessageSelectionAction
 import com.android.messaging.ui.conversation.screen.model.ConversationMessageSelectionUiState
@@ -86,6 +87,7 @@ internal interface ConversationScreenModel {
     fun onPhotoPickerMediaDeselected(contentUris: List<String>)
     fun onContactCardPicked(contactUri: String?)
     fun onMessageTextChanged(text: String)
+    fun tryStartAddingAttachment(): Boolean
     fun onAudioRecordingStart()
     fun onLockedAudioRecordingStart()
     fun onAudioRecordingLock(): Boolean
@@ -103,6 +105,8 @@ internal interface ConversationScreenModel {
     fun dismissMessageSelection()
     fun confirmDeleteSelectedMessages()
     fun onSendClick()
+    fun dismissAttachmentLimitWarning()
+    fun sendAnywayAfterAttachmentLimitWarning()
     fun onDefaultSmsRolePromptActionClick()
     fun onDefaultSmsRoleRequestResult(resultCode: Int)
     fun onDefaultSmsRoleRequestLaunchFailed()
@@ -193,19 +197,31 @@ internal class ConversationViewModel @Inject constructor(
         ),
     )
 
+    private val dialogUiState = combine(
+        conversationDraftDelegate.attachmentLimitWarning,
+        conversationMetadataDelegate.isDeleteConversationConfirmationVisible,
+    ) { attachmentLimitWarning, isDeleteConversationConfirmationVisible ->
+        ConversationScreenDialogUiState(
+            attachmentLimitWarning = attachmentLimitWarning,
+            isDeleteConversationConfirmationVisible = isDeleteConversationConfirmationVisible,
+        )
+    }
+
     override val scaffoldUiState: StateFlow<ConversationScreenScaffoldUiState> = combine(
         conversationMetadataDelegate.state,
         conversationMessagesDelegate.state,
         composerUiState,
         conversationMessageSelectionDelegate.state,
-        conversationMetadataDelegate.isDeleteConversationConfirmationVisible,
-    ) { metadataState, messagesUiState, composerUiState, selectionUiState, isDeleteConfirmVisible ->
+        dialogUiState,
+    ) { metadataState, messagesUiState, composerUiState, selectionUiState, dialogUiState ->
         buildScaffoldUiState(
             metadataState = metadataState,
             messagesUiState = messagesUiState,
             composerUiState = composerUiState,
             selectionUiState = selectionUiState,
-            isDeleteConversationConfirmationVisible = isDeleteConfirmVisible,
+            attachmentLimitWarning = dialogUiState.attachmentLimitWarning,
+            isDeleteConversationConfirmationVisible = dialogUiState
+                .isDeleteConversationConfirmationVisible,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -217,6 +233,7 @@ internal class ConversationViewModel @Inject constructor(
             messagesUiState = conversationMessagesDelegate.state.value,
             composerUiState = composerUiState.value,
             selectionUiState = conversationMessageSelectionDelegate.state.value,
+            attachmentLimitWarning = conversationDraftDelegate.attachmentLimitWarning.value,
             isDeleteConversationConfirmationVisible =
                 conversationMetadataDelegate.isDeleteConversationConfirmationVisible.value,
         ),
@@ -227,6 +244,7 @@ internal class ConversationViewModel @Inject constructor(
         messagesUiState: ConversationMessagesUiState,
         composerUiState: ConversationComposerUiState,
         selectionUiState: ConversationMessageSelectionUiState,
+        attachmentLimitWarning: ConversationAttachmentLimitWarning?,
         isDeleteConversationConfirmationVisible: Boolean,
     ): ConversationScreenScaffoldUiState {
         val isPresent = metadataState is ConversationMetadataUiState.Present
@@ -239,6 +257,7 @@ internal class ConversationViewModel @Inject constructor(
             canUnarchive = isPresent && presentMetadata?.isArchived == true,
             canAddContact = canAddContact(metadataState = metadataState),
             canDeleteConversation = isPresent,
+            attachmentLimitWarning = attachmentLimitWarning,
             isDeleteConversationConfirmationVisible = isDeleteConversationConfirmationVisible,
             metadata = metadataState,
             messages = messagesUiState,
@@ -507,6 +526,10 @@ internal class ConversationViewModel @Inject constructor(
         conversationDraftDelegate.onMessageTextChanged(messageText = text)
     }
 
+    override fun tryStartAddingAttachment(): Boolean {
+        return conversationDraftDelegate.tryStartAddingAttachment()
+    }
+
     override fun onAudioRecordingStart() {
         startAudioRecording(isLocked = false)
     }
@@ -516,6 +539,10 @@ internal class ConversationViewModel @Inject constructor(
     }
 
     private fun startAudioRecording(isLocked: Boolean) {
+        if (!conversationDraftDelegate.tryStartAddingAttachment()) {
+            return
+        }
+
         val effectiveSelfParticipantId = composerUiState.value
             .simSelector
             .selectedSubscription
@@ -585,6 +612,14 @@ internal class ConversationViewModel @Inject constructor(
 
     override fun onSendClick() {
         conversationDraftDelegate.onSendClick()
+    }
+
+    override fun dismissAttachmentLimitWarning() {
+        conversationDraftDelegate.dismissAttachmentLimitWarning()
+    }
+
+    override fun sendAnywayAfterAttachmentLimitWarning() {
+        conversationDraftDelegate.sendAnywayAfterAttachmentLimitWarning()
     }
 
     override fun onDefaultSmsRolePromptActionClick() {
@@ -704,3 +739,8 @@ internal class ConversationViewModel @Inject constructor(
         private const val STATEFLOW_STOP_TIMEOUT_MILLIS = 5_000L
     }
 }
+
+private data class ConversationScreenDialogUiState(
+    val attachmentLimitWarning: ConversationAttachmentLimitWarning?,
+    val isDeleteConversationConfirmationVisible: Boolean,
+)

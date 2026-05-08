@@ -5,15 +5,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Rect as ComposeRect
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,7 +40,6 @@ import com.android.messaging.ui.conversation.messages.model.message.Conversation
 import com.android.messaging.ui.conversation.messages.ui.ConversationMessages
 import com.android.messaging.ui.conversation.metadata.model.ConversationMetadataUiState
 import com.android.messaging.ui.conversation.metadata.ui.ConversationTopAppBar
-import com.android.messaging.ui.conversation.screen.model.ConversationMessageDeleteConfirmationUiState
 import com.android.messaging.ui.conversation.screen.model.ConversationScreenScaffoldUiState
 import kotlinx.collections.immutable.ImmutableList
 
@@ -291,27 +286,6 @@ private fun ConversationScreenBottomBar(
 }
 
 @Composable
-private fun ConversationScreenDialogs(
-    uiState: ConversationScreenScaffoldUiState,
-    screenModel: ConversationScreenModel,
-) {
-    uiState.selection.deleteConfirmation?.let { deleteConfirmation ->
-        ConversationDeleteMessagesDialog(
-            deleteConfirmation = deleteConfirmation,
-            onConfirm = screenModel::confirmDeleteSelectedMessages,
-            onDismiss = screenModel::dismissDeleteMessageConfirmation,
-        )
-    }
-
-    if (uiState.isDeleteConversationConfirmationVisible) {
-        ConversationDeleteConversationDialog(
-            onConfirm = screenModel::confirmDeleteConversation,
-            onDismiss = screenModel::dismissDeleteConversationConfirmation,
-        )
-    }
-}
-
-@Composable
 private fun ConversationScreenSimSelectorSheet(
     isVisible: Boolean,
     uiState: ConversationScreenScaffoldUiState,
@@ -329,35 +303,6 @@ private fun ConversationScreenSimSelectorSheet(
             onDismissRequest()
         },
         onDismissRequest = onDismissRequest,
-    )
-}
-
-@Composable
-private fun ConversationDeleteConversationDialog(
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = pluralStringResource(
-                    id = R.plurals.delete_conversations_confirmation_dialog_title,
-                    count = 1,
-                    1,
-                ),
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(text = stringResource(R.string.delete_conversation_confirmation_button))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.delete_conversation_decline_button))
-            }
-        },
     )
 }
 
@@ -437,49 +382,6 @@ private fun shouldShowIncomingSenderLabels(metadata: ConversationMetadataUiState
         ConversationMetadataUiState.Unavailable,
         -> false
     }
-}
-
-@Composable
-private fun ConversationDeleteMessagesDialog(
-    deleteConfirmation: ConversationMessageDeleteConfirmationUiState,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = pluralStringResource(
-                    id = R.plurals.delete_messages_confirmation_dialog_title,
-                    count = deleteConfirmation.messageIds.size,
-                    deleteConfirmation.messageIds.size,
-                ),
-            )
-        },
-        text = {
-            Text(
-                text = stringResource(R.string.delete_message_confirmation_dialog_text),
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-            ) {
-                Text(
-                    text = stringResource(R.string.delete_message_confirmation_button),
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-            ) {
-                Text(
-                    text = stringResource(android.R.string.cancel),
-                )
-            }
-        },
-    )
 }
 
 @Composable

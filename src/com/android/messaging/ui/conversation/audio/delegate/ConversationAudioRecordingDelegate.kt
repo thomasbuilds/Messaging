@@ -475,10 +475,14 @@ internal class ConversationAudioRecordingDelegateImpl @Inject constructor(
             return
         }
 
-        resolvePendingAudioAttachment(
+        val didResolvePendingAttachment = resolvePendingAudioAttachment(
             pendingAttachmentId = pendingAttachmentId,
             outputUri = outputUri,
         )
+
+        if (!didResolvePendingAttachment) {
+            deleteStoppedRecording(outputUri = outputUri)
+        }
 
         withSessionStateLock {
             clearFinalizingSessionLocked(pendingAttachmentId = pendingAttachmentId)
@@ -539,7 +543,7 @@ internal class ConversationAudioRecordingDelegateImpl @Inject constructor(
     private fun resolvePendingAudioAttachment(
         pendingAttachmentId: String,
         outputUri: Uri?,
-    ) {
+    ): Boolean {
         val recordedAttachment = outputUri?.let { resolvedOutputUri ->
             ConversationDraftAttachment(
                 contentType = ContentType.AUDIO_3GPP,
@@ -547,11 +551,12 @@ internal class ConversationAudioRecordingDelegateImpl @Inject constructor(
             )
         }
 
-        when (recordedAttachment) {
+        return when (recordedAttachment) {
             null -> {
                 conversationDraftDelegate.removePendingAttachment(
                     pendingAttachmentId = pendingAttachmentId,
                 )
+                false
             }
 
             else -> {

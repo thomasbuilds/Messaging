@@ -1,11 +1,17 @@
 package com.android.messaging.di.conversation
 
+import com.android.messaging.domain.conversation.usecase.draft.ResolveConversationDraftSendProtocol
+import com.android.messaging.domain.conversation.usecase.draft.ResolveConversationDraftSendProtocolImpl
+import com.android.messaging.domain.conversation.usecase.draft.ResolveDraftAttachmentsWithinLimit
+import com.android.messaging.domain.conversation.usecase.draft.ResolveDraftAttachmentsWithinLimitImpl
 import com.android.messaging.ui.conversation.audio.delegate.ConversationAudioRecordingDelegate
 import com.android.messaging.ui.conversation.audio.delegate.ConversationAudioRecordingDelegateImpl
 import com.android.messaging.ui.conversation.composer.delegate.ConversationComposerAttachmentsDelegate
 import com.android.messaging.ui.conversation.composer.delegate.ConversationComposerAttachmentsDelegateImpl
 import com.android.messaging.ui.conversation.composer.delegate.ConversationDraftDelegate
 import com.android.messaging.ui.conversation.composer.delegate.ConversationDraftDelegateImpl
+import com.android.messaging.ui.conversation.composer.delegate.ConversationDraftEditorDelegate
+import com.android.messaging.ui.conversation.composer.delegate.ConversationDraftEditorDelegateImpl
 import com.android.messaging.ui.conversation.focus.delegate.ConversationFocusDelegate
 import com.android.messaging.ui.conversation.focus.delegate.ConversationFocusDelegateImpl
 import com.android.messaging.ui.conversation.mediapicker.delegate.ConversationMediaPickerDelegate
@@ -42,9 +48,27 @@ internal abstract class ConversationViewModelBindsModule {
 
     @Binds
     @ViewModelScoped
+    abstract fun bindResolveConversationDraftSendProtocol(
+        impl: ResolveConversationDraftSendProtocolImpl,
+    ): ResolveConversationDraftSendProtocol
+
+    @Binds
+    @ViewModelScoped
+    abstract fun bindResolveDraftAttachmentsWithinLimit(
+        impl: ResolveDraftAttachmentsWithinLimitImpl,
+    ): ResolveDraftAttachmentsWithinLimit
+
+    @Binds
+    @ViewModelScoped
     abstract fun bindConversationDraftDelegate(
         impl: ConversationDraftDelegateImpl,
     ): ConversationDraftDelegate
+
+    @Binds
+    @ViewModelScoped
+    abstract fun bindConversationDraftEditorDelegate(
+        impl: ConversationDraftEditorDelegateImpl,
+    ): ConversationDraftEditorDelegate
 
     @Binds
     @ViewModelScoped

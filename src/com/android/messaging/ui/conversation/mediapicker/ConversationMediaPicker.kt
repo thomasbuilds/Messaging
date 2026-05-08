@@ -61,6 +61,7 @@ internal fun ConversationMediaPicker(
     photoPickerSourceContentUriByAttachmentContentUri: ImmutableMap<String, String>,
     onPhotoPickerMediaSelected: (List<String>) -> Unit,
     onPhotoPickerMediaDeselected: (List<String>) -> Unit,
+    onAttachmentStartRequest: () -> Boolean,
     onRequestAudioPermission: () -> Unit,
     onRequestCameraPermission: () -> Unit,
     onCapturedMediaReady: (ConversationCapturedMedia) -> Unit,
@@ -96,6 +97,7 @@ internal fun ConversationMediaPicker(
         photoPickerSourceContentUriByAttachmentContentUri,
         onPhotoPickerMediaSelected = onPhotoPickerMediaSelected,
         onPhotoPickerMediaDeselected = onPhotoPickerMediaDeselected,
+        onAttachmentStartRequest = onAttachmentStartRequest,
         onRequestAudioPermission = onRequestAudioPermission,
         onRequestCameraPermission = onRequestCameraPermission,
         onCapturedMediaReady = onCapturedMediaReady,
@@ -138,6 +140,7 @@ private fun rememberConversationEmbeddedPhotoPickerState(
     sheetState: SheetState,
     state: ConversationMediaPickerState,
     coroutineScope: CoroutineScope,
+    onAttachmentStartRequest: () -> Boolean,
     onPhotoPickerMediaSelected: (List<String>) -> Unit,
     onPhotoPickerMediaDeselected: (List<String>) -> Unit,
 ): EmbeddedPhotoPickerState {
@@ -148,8 +151,11 @@ private fun rememberConversationEmbeddedPhotoPickerState(
         },
         onUriPermissionGranted = { uris ->
             val contentUris = uris.map(Uri::toString)
-            onPhotoPickerMediaSelected(contentUris)
-            contentUris.lastOrNull()?.let(state::showReview)
+
+            if (contentUris.isNotEmpty() && onAttachmentStartRequest()) {
+                onPhotoPickerMediaSelected(contentUris)
+                contentUris.lastOrNull()?.let(state::showReview)
+            }
         },
         onUriPermissionRevoked = { uris ->
             onPhotoPickerMediaDeselected(uris.map(Uri::toString))
@@ -228,6 +234,7 @@ private fun ConversationMediaPickerContent(
     photoPickerSourceContentUriByAttachmentContentUri: ImmutableMap<String, String>,
     onPhotoPickerMediaSelected: (List<String>) -> Unit,
     onPhotoPickerMediaDeselected: (List<String>) -> Unit,
+    onAttachmentStartRequest: () -> Boolean,
     onRequestAudioPermission: () -> Unit,
     onRequestCameraPermission: () -> Unit,
     onCapturedMediaReady: (ConversationCapturedMedia) -> Unit,
@@ -245,6 +252,7 @@ private fun ConversationMediaPickerContent(
         sheetState = sheetState,
         state = state,
         coroutineScope = coroutineScope,
+        onAttachmentStartRequest = onAttachmentStartRequest,
         onPhotoPickerMediaSelected = onPhotoPickerMediaSelected,
         onPhotoPickerMediaDeselected = onPhotoPickerMediaDeselected,
     )
@@ -280,6 +288,7 @@ private fun ConversationMediaPickerContent(
         photoPickerSourceContentUriByAttachmentContentUri,
         onRequestAudioPermission = onRequestAudioPermission,
         onRequestCameraPermission = onRequestCameraPermission,
+        onAttachmentStartRequest = onAttachmentStartRequest,
         onCapturedMediaReady = onCapturedMediaReady,
         onSendClick = onSendClick,
     )
@@ -308,6 +317,7 @@ private fun ConversationMediaPickerScaffoldContent(
     photoPickerSourceContentUriByAttachmentContentUri: ImmutableMap<String, String>,
     onRequestAudioPermission: () -> Unit,
     onRequestCameraPermission: () -> Unit,
+    onAttachmentStartRequest: () -> Boolean,
     onCapturedMediaReady: (ConversationCapturedMedia) -> Unit,
     onSendClick: () -> Unit,
 ) {
@@ -338,6 +348,7 @@ private fun ConversationMediaPickerScaffoldContent(
         photoPickerSourceContentUriByAttachmentContentUri,
         onRequestAudioPermission = onRequestAudioPermission,
         onRequestCameraPermission = onRequestCameraPermission,
+        onAttachmentStartRequest = onAttachmentStartRequest,
         onCapturedMediaReady = onCapturedMediaReady,
         onSendClick = onSendClick,
         onShowReview = state::showReview,

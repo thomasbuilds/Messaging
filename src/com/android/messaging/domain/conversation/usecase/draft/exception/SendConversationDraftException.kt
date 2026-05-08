@@ -54,6 +54,12 @@ internal class TooManyVideoAttachmentsException(
         "attachments.",
 )
 
+internal class MessageLimitExceededException(
+    conversationId: String,
+) : SendConversationDraftException(
+    message = "Draft for conversation $conversationId exceeds the MMS message limit.",
+)
+
 internal class DraftDispatchFailedException(
     conversationId: String,
     cause: Throwable,

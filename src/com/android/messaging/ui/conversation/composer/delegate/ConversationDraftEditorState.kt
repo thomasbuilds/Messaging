@@ -214,15 +214,6 @@ internal data class DraftEditorState(
         return copy(pendingAttachments = updatedPendingAttachments)
     }
 
-    fun withPendingAttachmentResolved(
-        pendingAttachmentId: String,
-        attachment: ConversationDraftAttachment,
-    ): DraftEditorState {
-        val updatedState = withPendingAttachmentRemoved(pendingAttachmentId)
-
-        return updatedState.withAttachmentsAdded(listOf(attachment))
-    }
-
     fun canSendDraft(): Boolean {
         return conversationId != null &&
             isLoaded &&
@@ -401,6 +392,7 @@ internal data class DraftSaveRequest(
 internal data class DraftSendRequest(
     val conversationId: String,
     val draft: ConversationDraft,
+    val ignoreMessageSizeLimit: Boolean = false,
 )
 
 internal data class PersistedDraftUpdate(

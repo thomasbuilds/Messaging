@@ -12,6 +12,8 @@ import com.android.messaging.debug.DebugSimEmulationMode
 import com.android.messaging.debug.DebugSimEmulationSource
 import com.android.messaging.di.core.IoDispatcher
 import com.android.messaging.sms.MmsConfig
+import com.android.messaging.util.BugleGservices
+import com.android.messaging.util.BugleGservicesKeys
 import com.android.messaging.util.LogUtil
 import com.android.messaging.util.core.extension.typedFlow
 import javax.inject.Inject
@@ -31,6 +33,8 @@ import kotlinx.coroutines.flow.map
 
 internal interface ConversationSubscriptionsRepository {
     fun observeActiveSubscriptions(): Flow<ImmutableList<ConversationSubscription>>
+
+    fun resolveAttachmentLimit(): Int
 
     fun resolveMaxMessageSize(selfParticipantId: String): Flow<Int>
 }
@@ -61,6 +65,15 @@ internal class ConversationSubscriptionsRepositoryImpl @Inject constructor(
                 mode = emulationMode,
             )
         }
+    }
+
+    override fun resolveAttachmentLimit(): Int {
+        return BugleGservices
+            .get()
+            .getInt(
+                BugleGservicesKeys.MMS_ATTACHMENT_LIMIT,
+                BugleGservicesKeys.MMS_ATTACHMENT_LIMIT_DEFAULT,
+            )
     }
 
     override fun resolveMaxMessageSize(selfParticipantId: String): Flow<Int> {

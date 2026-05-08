@@ -6,21 +6,19 @@ import com.android.messaging.data.conversation.model.draft.ConversationDraft
 import com.android.messaging.data.conversation.model.draft.ConversationDraftAttachment
 import com.android.messaging.data.conversation.model.draft.ConversationDraftPendingAttachment
 import com.android.messaging.data.conversation.repository.ConversationDraftsRepository
-import com.android.messaging.data.conversation.repository.ConversationsRepository
 import com.android.messaging.di.core.ApplicationCoroutineScope
 import com.android.messaging.di.core.DefaultDispatcher
-import com.android.messaging.di.core.IoDispatcher
 import com.android.messaging.domain.conversation.usecase.action.CheckConversationActionRequirements
 import com.android.messaging.domain.conversation.usecase.action.ConversationActionRequirementsResult
-import com.android.messaging.domain.conversation.usecase.draft.GetConversationDraftSendProtocol
 import com.android.messaging.domain.conversation.usecase.draft.SendConversationDraft
 import com.android.messaging.domain.conversation.usecase.draft.exception.ConversationSimNotReadyException
+import com.android.messaging.domain.conversation.usecase.draft.exception.MessageLimitExceededException
 import com.android.messaging.domain.conversation.usecase.draft.exception.SendConversationDraftException
 import com.android.messaging.domain.conversation.usecase.draft.exception.TooManyVideoAttachmentsException
 import com.android.messaging.domain.conversation.usecase.draft.exception.UnknownConversationRecipientException
-import com.android.messaging.domain.conversation.usecase.draft.model.ConversationDraftSendProtocol
 import com.android.messaging.ui.conversation.common.ConversationScreenDelegate
 import com.android.messaging.ui.conversation.composer.model.ConversationDraftState
+import com.android.messaging.ui.conversation.screen.model.ConversationAttachmentLimitWarning
 import com.android.messaging.ui.conversation.screen.model.ConversationScreenEffect
 import com.android.messaging.util.LogUtil
 import com.android.messaging.util.core.extension.unitFlow
@@ -45,11 +43,9 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.transformLatest
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -57,6 +53,7 @@ import kotlinx.coroutines.withContext
 
 internal interface ConversationDraftDelegate : ConversationScreenDelegate<ConversationDraftState> {
     val effects: Flow<ConversationScreenEffect>
+    val attachmentLimitWarning: StateFlow<ConversationAttachmentLimitWarning?>
 
     fun onMessageTextChanged(messageText: String)
 
@@ -67,7 +64,11 @@ internal interface ConversationDraftDelegate : ConversationScreenDelegate<Conver
         draft: ConversationDraft,
     )
 
-    fun addAttachments(attachments: Collection<ConversationDraftAttachment>)
+    fun addAttachments(
+        attachments: Collection<ConversationDraftAttachment>,
+    ): List<ConversationDraftAttachment>
+
+    fun tryStartAddingAttachment(): Boolean
 
     fun addPendingAttachment(pendingAttachment: ConversationDraftPendingAttachment)
 
@@ -78,7 +79,7 @@ internal interface ConversationDraftDelegate : ConversationScreenDelegate<Conver
     fun resolvePendingAttachment(
         pendingAttachmentId: String,
         attachment: ConversationDraftAttachment,
-    )
+    ): Boolean
 
     fun updateAttachmentCaption(
         contentUri: String,
@@ -86,6 +87,10 @@ internal interface ConversationDraftDelegate : ConversationScreenDelegate<Conver
     )
 
     fun onSendClick()
+
+    fun dismissAttachmentLimitWarning()
+
+    fun sendAnywayAfterAttachmentLimitWarning()
 
     fun onDefaultSmsRoleRequestResult(resultCode: Int): Boolean
 
@@ -100,28 +105,28 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
     private val applicationScope: CoroutineScope,
     private val checkConversationActionRequirements: CheckConversationActionRequirements,
     private val conversationDraftsRepository: ConversationDraftsRepository,
-    private val conversationsRepository: ConversationsRepository,
-    private val getConversationDraftSendProtocol: GetConversationDraftSendProtocol,
+    private val conversationDraftEditorDelegate: ConversationDraftEditorDelegate,
     private val sendConversationDraft: SendConversationDraft,
     @param:DefaultDispatcher
     private val defaultDispatcher: CoroutineDispatcher,
-    @param:IoDispatcher
-    private val ioDispatcher: CoroutineDispatcher,
 ) : ConversationDraftDelegate {
 
     private val _effects = MutableSharedFlow<ConversationScreenEffect>(
         extraBufferCapacity = 1,
     )
-    private val _state = MutableStateFlow(ConversationDraftState())
-    override val effects = _effects.asSharedFlow()
-    override val state = _state.asStateFlow()
+    private val _attachmentLimitWarning = MutableStateFlow<ConversationAttachmentLimitWarning?>(
+        value = null,
+    )
 
-    private val draftEditorState = MutableStateFlow(DraftEditorState())
+    override val effects = _effects.asSharedFlow()
+    override val attachmentLimitWarning = _attachmentLimitWarning.asStateFlow()
+    override val state: StateFlow<ConversationDraftState> = conversationDraftEditorDelegate.state
+
     private val draftSaveMutex = Mutex()
 
     private var boundScope: CoroutineScope? = null
-    private var pendingDraftSeed: PendingDraftSeed? = null
     private var pendingDefaultSmsRoleSendRequest: DraftSendRequest? = null
+    private var pendingMessageLimitSendRequest: DraftSendRequest? = null
 
     override fun bind(
         scope: CoroutineScope,
@@ -142,83 +147,113 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
     }
 
     override fun onMessageTextChanged(messageText: String) {
-        updateDraftEditorState { currentDraftEditorState ->
-            currentDraftEditorState.withMessageText(messageText)
-        }
+        conversationDraftEditorDelegate.onMessageTextChanged(messageText = messageText)
     }
 
     override fun onSelfParticipantIdChanged(selfParticipantId: String) {
-        updateDraftEditorState { currentDraftEditorState ->
-            currentDraftEditorState.withSelfParticipantId(selfParticipantId = selfParticipantId)
-        }
+        conversationDraftEditorDelegate.onSelfParticipantIdChanged(
+            selfParticipantId = selfParticipantId,
+        )
     }
 
     override fun seedDraft(
         conversationId: String,
         draft: ConversationDraft,
     ) {
-        pendingDraftSeed = PendingDraftSeed(
+        conversationDraftEditorDelegate.seedDraft(
             conversationId = conversationId,
             draft = draft,
         )
-        applyPendingDraftSeedIfPossible()
     }
 
-    override fun addAttachments(attachments: Collection<ConversationDraftAttachment>) {
-        if (attachments.isEmpty()) {
-            return
+    override fun addAttachments(
+        attachments: Collection<ConversationDraftAttachment>,
+    ): List<ConversationDraftAttachment> {
+        val attachmentLimitResult = conversationDraftEditorDelegate.addAttachments(
+            attachments = attachments,
+        )
+
+        if (attachmentLimitResult.didDropAttachments) {
+            showComposingAttachmentLimitWarning()
         }
 
-        updateDraftEditorState { currentDraftEditorState ->
-            currentDraftEditorState.withAttachmentsAdded(attachments)
+        return attachmentLimitResult.attachmentsToAdd
+    }
+
+    override fun tryStartAddingAttachment(): Boolean {
+        val canStartAddingAttachment = conversationDraftEditorDelegate.tryStartAddingAttachment()
+
+        if (!canStartAddingAttachment) {
+            showComposingAttachmentLimitWarning()
         }
+
+        return canStartAddingAttachment
     }
 
     override fun addPendingAttachment(pendingAttachment: ConversationDraftPendingAttachment) {
-        updateDraftEditorState { currentDraftEditorState ->
-            currentDraftEditorState.withPendingAttachmentAdded(pendingAttachment)
-        }
+        conversationDraftEditorDelegate.addPendingAttachment(
+            pendingAttachment = pendingAttachment,
+        )
     }
 
     override fun removeAttachment(contentUri: String) {
-        updateDraftEditorState { currentDraftEditorState ->
-            currentDraftEditorState.withAttachmentRemoved(contentUri)
-        }
+        conversationDraftEditorDelegate.removeAttachment(contentUri = contentUri)
     }
 
     override fun removePendingAttachment(pendingAttachmentId: String) {
-        updateDraftEditorState { currentDraftEditorState ->
-            currentDraftEditorState.withPendingAttachmentRemoved(pendingAttachmentId)
-        }
+        conversationDraftEditorDelegate.removePendingAttachment(
+            pendingAttachmentId = pendingAttachmentId,
+        )
     }
 
     override fun resolvePendingAttachment(
         pendingAttachmentId: String,
         attachment: ConversationDraftAttachment,
-    ) {
-        updateDraftEditorState { currentDraftEditorState ->
-            currentDraftEditorState.withPendingAttachmentResolved(
-                pendingAttachmentId = pendingAttachmentId,
-                attachment = attachment,
-            )
+    ): Boolean {
+        val resolution = conversationDraftEditorDelegate.resolvePendingAttachment(
+            pendingAttachmentId = pendingAttachmentId,
+            attachment = attachment,
+        )
+
+        if (resolution.didDropAttachments) {
+            showComposingAttachmentLimitWarning()
         }
+
+        return resolution.didResolveAttachment
     }
 
     override fun updateAttachmentCaption(
         contentUri: String,
         captionText: String,
     ) {
-        updateDraftEditorState { currentDraftEditorState ->
-            currentDraftEditorState.withAttachmentCaption(
-                contentUri = contentUri,
-                captionText = captionText,
-            )
-        }
+        conversationDraftEditorDelegate.updateAttachmentCaption(
+            contentUri = contentUri,
+            captionText = captionText,
+        )
     }
 
     override fun onSendClick() {
-        createSendRequestOrNull()
+        conversationDraftEditorDelegate.createSendRequestOrNull()
             ?.let(::sendDraftWhenActionRequirementsSatisfied)
+    }
+
+    override fun dismissAttachmentLimitWarning() {
+        _attachmentLimitWarning.value = null
+    }
+
+    private fun showComposingAttachmentLimitWarning() {
+        _attachmentLimitWarning.value = ConversationAttachmentLimitWarning
+            .ComposingAttachmentLimitReached
+    }
+
+    override fun sendAnywayAfterAttachmentLimitWarning() {
+        val sendRequest = pendingMessageLimitSendRequest ?: return
+        pendingMessageLimitSendRequest = null
+        _attachmentLimitWarning.value = null
+
+        sendDraftWhenActionRequirementsSatisfied(
+            sendRequest = sendRequest.copy(ignoreMessageSizeLimit = true),
+        )
     }
 
     override fun onDefaultSmsRoleRequestResult(resultCode: Int): Boolean {
@@ -238,7 +273,7 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
 
     override fun persistDraft() {
         val scope = boundScope ?: return
-        val saveRequest = draftEditorState.value.toSaveRequestOrNull() ?: return
+        val saveRequest = conversationDraftEditorDelegate.currentSaveRequest ?: return
 
         launchDraftOperation(scope = scope) {
             createSaveDraftOperationFlow(
@@ -251,7 +286,7 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
     }
 
     override fun flushDraft() {
-        val saveRequest = draftEditorState.value.toSaveRequestOrNull() ?: return
+        val saveRequest = conversationDraftEditorDelegate.currentSaveRequest ?: return
 
         launchDraftOperation(scope = applicationScope) {
             createSaveDraftOperationFlow(
@@ -272,7 +307,7 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
         draftSaveMutex.withLock {
             // Ignore debounced or queued saves that no longer reflect the current working draft
             if (shouldSkipIfRequestIsStale &&
-                !draftEditorState.value.matchesSaveRequest(
+                !conversationDraftEditorDelegate.matchesSaveRequest(
                     saveRequest = saveRequest,
                 )
             ) {
@@ -288,11 +323,7 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
                 return@withLock
             }
 
-            updateDraftEditorState { currentDraftEditorState ->
-                currentDraftEditorState.withPersistedSaveResult(
-                    saveRequest = saveRequest,
-                )
-            }
+            conversationDraftEditorDelegate.applyPersistedSaveResult(saveRequest = saveRequest)
         }
     }
 
@@ -303,18 +334,9 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
         scope.launch(defaultDispatcher) {
             observeConversationDraftUpdates(conversationIdFlow = conversationIdFlow)
                 .collect { persistedDraftUpdate ->
-                    updateDraftEditorState { currentDraftEditorState ->
-                        if (currentDraftEditorState.conversationId !=
-                            persistedDraftUpdate.conversationId
-                        ) {
-                            currentDraftEditorState
-                        } else {
-                            currentDraftEditorState.withPersistedDraft(
-                                persistedDraft = persistedDraftUpdate.persistedDraft,
-                            )
-                        }
-                    }
-                    applyPendingDraftSeedIfPossible()
+                    conversationDraftEditorDelegate.applyPersistedDraftUpdate(
+                        persistedDraftUpdate = persistedDraftUpdate,
+                    )
                 }
         }
     }
@@ -334,30 +356,21 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
 
     private fun bindDraftSendProtocol(scope: CoroutineScope) {
         scope.launch(defaultDispatcher) {
-            observeDraftSendProtocol().collect { sendProtocol ->
-                _state.update { currentState ->
-                    currentState.copy(
-                        sendProtocol = when {
-                            currentState.draft.hasContent -> sendProtocol
-                            else -> ConversationDraftSendProtocol.SMS
-                        },
-                    )
-                }
+            conversationDraftEditorDelegate.sendProtocolUpdates.collect { sendProtocol ->
+                conversationDraftEditorDelegate.applySendProtocol(sendProtocol = sendProtocol)
             }
         }
     }
 
     private suspend fun resetDraftEditorState(conversationId: String?) {
-        var previousDraftEditorState: DraftEditorState? = null
+        pendingMessageLimitSendRequest = null
+        _attachmentLimitWarning.value = null
 
-        updateDraftEditorState { currentDraftEditorState ->
-            previousDraftEditorState = currentDraftEditorState
-            DraftEditorState(conversationId = conversationId)
-        }
-        applyPendingDraftSeedIfPossible()
+        val previousSaveRequest = conversationDraftEditorDelegate.reset(
+            conversationId = conversationId,
+        )
 
-        previousDraftEditorState
-            ?.toSaveRequestOrNull()
+        previousSaveRequest
             ?.let { saveRequest ->
                 createSaveDraftOperationFlow(
                     operationName = "flush previous draft",
@@ -414,9 +427,9 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
     private fun sendDraft(sendRequest: DraftSendRequest) {
         val scope = boundScope ?: return
 
-        if (markSendingForSendRequest(sendRequest = sendRequest)) {
+        if (conversationDraftEditorDelegate.markSendingForSendRequest(sendRequest = sendRequest)) {
             launchDraftOperation(scope = scope) {
-                createSendDraftFlow(sendRequest)
+                createSendDraftFlow(sendRequest = sendRequest)
             }
         }
     }
@@ -433,46 +446,84 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
         return runDraftOperationBoundary(
             operationName = "send draft",
             conversationId = sendRequest.conversationId,
-            onFailure = ::handleSendDraftFailure,
+            onFailure = { exception ->
+                handleSendDraftFailure(
+                    exception = exception,
+                    sendRequest = sendRequest,
+                )
+            },
         ) {
             sendConversationDraft(
                 conversationId = sendRequest.conversationId,
                 draft = sendRequest.draft,
+                ignoreMessageSizeLimit = sendRequest.ignoreMessageSizeLimit,
             ).onEach {
-                clearConversationDraftAfterSend(sendRequest = sendRequest)
+                conversationDraftEditorDelegate.clearConversationDraftAfterSend(
+                    sendRequest = sendRequest,
+                )
                 didClearDraftAfterSend = true
             }.onCompletion { throwable ->
                 if (throwable != null || !didClearDraftAfterSend) {
-                    markConversationDraftAsIdle(conversationId = sendRequest.conversationId)
+                    conversationDraftEditorDelegate.markConversationDraftAsIdle(
+                        conversationId = sendRequest.conversationId,
+                    )
                 }
             }
         }
     }
 
-    private fun handleSendDraftFailure(exception: Throwable) {
+    private fun handleSendDraftFailure(
+        exception: Throwable,
+        sendRequest: DraftSendRequest,
+    ) {
         // TODO: Add an extension that properly skip CancellationException manual handling
 
-        val messageResId = when (exception) {
-            is CancellationException -> return
+        val wasAttachmentLimitFailure = handleAttachmentLimitFailure(
+            exception = exception,
+            sendRequest = sendRequest,
+        )
 
-            is ConversationSimNotReadyException -> {
-                R.string.cant_send_message_without_active_subscription
+        if (!wasAttachmentLimitFailure && exception !is CancellationException) {
+            emitEffect(
+                effect = ConversationScreenEffect.ShowMessage(
+                    messageResId = resolveSendDraftFailureMessageResId(exception = exception),
+                ),
+            )
+        }
+    }
+
+    private fun handleAttachmentLimitFailure(
+        exception: Throwable,
+        sendRequest: DraftSendRequest,
+    ): Boolean {
+        return when (exception) {
+            is TooManyVideoAttachmentsException -> {
+                _attachmentLimitWarning.value = ConversationAttachmentLimitWarning
+                    .SendingVideoAttachmentLimitReached
+                true
             }
 
-            is TooManyVideoAttachmentsException -> {
-                R.string.cant_send_message_with_multiple_videos
+            is MessageLimitExceededException -> {
+                pendingMessageLimitSendRequest = sendRequest
+                _attachmentLimitWarning.value = ConversationAttachmentLimitWarning
+                    .SendingMessageLimitReached
+                true
+            }
+
+            else -> false
+        }
+    }
+
+    private fun resolveSendDraftFailureMessageResId(exception: Throwable): Int {
+        return when (exception) {
+            is ConversationSimNotReadyException -> {
+                R.string.cant_send_message_without_active_subscription
             }
 
             is UnknownConversationRecipientException -> R.string.unknown_sender
             is SendConversationDraftException -> R.string.send_message_failure
             else -> R.string.send_message_failure
         }
-
-        emitEffect(
-            effect = ConversationScreenEffect.ShowMessage(
-                messageResId = messageResId,
-            ),
-        )
     }
 
     private fun createSaveDraftOperationFlow(
@@ -559,184 +610,12 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
             operationName = "bind draft autosave",
             conversationId = null,
         ) {
-            draftEditorState
-                .map { currentDraftEditorState ->
-                    currentDraftEditorState.toSaveRequestOrNull()
-                }
+            conversationDraftEditorDelegate
+                .saveRequests
                 .distinctUntilChanged()
                 .debounce(timeoutMillis = DRAFT_AUTOSAVE_DELAY_MILLIS)
                 .filterNotNull()
         }
-    }
-
-    private fun observeDraftSendProtocol(): Flow<ConversationDraftSendProtocol> {
-        return draftEditorState
-            .map { currentDraftEditorState ->
-                currentDraftEditorState.conversationId to currentDraftEditorState.effectiveDraft
-            }
-            .distinctUntilChanged()
-            .debounce(timeoutMillis = DRAFT_SEND_PROTOCOL_DEBOUNCE_MILLIS)
-            .mapLatest { (conversationId, draft) ->
-                resolveDraftSendProtocol(
-                    conversationId = conversationId,
-                    draft = draft,
-                )
-            }
-            .distinctUntilChanged()
-    }
-
-    @Suppress("TooGenericExceptionCaught")
-    private suspend fun resolveDraftSendProtocol(
-        conversationId: String?,
-        draft: ConversationDraft,
-    ): ConversationDraftSendProtocol {
-        return try {
-            val resolvedConversationId = conversationId?.takeIf { it.isNotBlank() }
-            val sendData = when {
-                draft.hasContent && resolvedConversationId != null -> {
-                    withContext(ioDispatcher) {
-                        conversationsRepository.getConversationSendData(
-                            conversationId = resolvedConversationId,
-                            requestedSelfParticipantId = draft.selfParticipantId,
-                        )
-                    }
-                }
-
-                else -> null
-            }
-
-            when (sendData) {
-                null -> fallbackDraftSendProtocol(draft = draft)
-                else -> {
-                    getConversationDraftSendProtocol(
-                        draft = draft,
-                        sendData = sendData,
-                    )
-                }
-            }
-        } catch (exception: CancellationException) {
-            throw exception
-        } catch (exception: Exception) {
-            LogUtil.e(
-                TAG,
-                "Failed to resolve draft send protocol for conversation $conversationId",
-                exception,
-            )
-
-            fallbackDraftSendProtocol(draft = draft)
-        }
-    }
-
-    private fun fallbackDraftSendProtocol(
-        draft: ConversationDraft,
-    ): ConversationDraftSendProtocol {
-        return when {
-            draft.isMms -> ConversationDraftSendProtocol.MMS
-            else -> ConversationDraftSendProtocol.SMS
-        }
-    }
-
-    private fun updateDraftEditorState(transform: (DraftEditorState) -> DraftEditorState) {
-        draftEditorState.update { currentDraftEditorState ->
-            val updatedDraftEditorState = transform(currentDraftEditorState)
-            val visibleState = updatedDraftEditorState.visibleState
-            val visibleSendProtocol = resolveVisibleSendProtocol(
-                previousState = _state.value,
-                visibleState = visibleState,
-            )
-
-            _state.value = visibleState.copy(
-                sendProtocol = visibleSendProtocol,
-            )
-
-            updatedDraftEditorState
-        }
-    }
-
-    private fun resolveVisibleSendProtocol(
-        previousState: ConversationDraftState,
-        visibleState: ConversationDraftState,
-    ): ConversationDraftSendProtocol {
-        val visibleDraft = visibleState.draft
-        val previousDraft = previousState.draft
-
-        return when {
-            !visibleDraft.hasContent -> ConversationDraftSendProtocol.SMS
-            visibleDraft.isMms -> ConversationDraftSendProtocol.MMS
-            previousDraft.isMms -> ConversationDraftSendProtocol.SMS
-            else -> previousState.sendProtocol
-        }
-    }
-
-    private fun applyPendingDraftSeedIfPossible() {
-        val pendingDraftSeed = pendingDraftSeed ?: return
-
-        updateDraftEditorState { currentDraftEditorState ->
-            if (currentDraftEditorState.conversationId != pendingDraftSeed.conversationId) {
-                return@updateDraftEditorState currentDraftEditorState
-            }
-
-            this.pendingDraftSeed = null
-            currentDraftEditorState.withSeededDraft(draft = pendingDraftSeed.draft)
-        }
-    }
-
-    private fun markConversationDraftAsIdle(conversationId: String) {
-        updateDraftEditorState { currentDraftEditorState ->
-            if (currentDraftEditorState.conversationId != conversationId) {
-                return@updateDraftEditorState currentDraftEditorState
-            }
-
-            currentDraftEditorState.markIdle()
-        }
-    }
-
-    private fun clearConversationDraftAfterSend(sendRequest: DraftSendRequest) {
-        updateDraftEditorState { latestDraftEditorState ->
-            if (latestDraftEditorState.conversationId != sendRequest.conversationId) {
-                return@updateDraftEditorState latestDraftEditorState
-            }
-
-            latestDraftEditorState.clearDraftAfterSend(
-                sentDraft = sendRequest.draft,
-            )
-        }
-    }
-
-    private fun createSendRequestOrNull(): DraftSendRequest? {
-        val currentDraftEditorState = draftEditorState.value
-        val conversationId = currentDraftEditorState.conversationId
-
-        return when {
-            !currentDraftEditorState.canSendDraft() -> null
-            conversationId == null -> null
-
-            else -> {
-                DraftSendRequest(
-                    conversationId = conversationId,
-                    draft = currentDraftEditorState.effectiveDraft,
-                )
-            }
-        }
-    }
-
-    private fun markSendingForSendRequest(sendRequest: DraftSendRequest): Boolean {
-        var didMarkSending = false
-
-        updateDraftEditorState { state ->
-            val isSameConversation = state.conversationId == sendRequest.conversationId
-
-            val canMarkSending = isSameConversation && !state.isSending
-
-            if (!canMarkSending) {
-                return@updateDraftEditorState state
-            }
-
-            didMarkSending = true
-            state.markSending()
-        }
-
-        return didMarkSending
     }
 
     private fun <T> runDraftOperationBoundary(
@@ -761,11 +640,5 @@ internal class ConversationDraftDelegateImpl @Inject constructor(
         private const val TAG = "ConversationDraftDelegate"
 
         private const val DRAFT_AUTOSAVE_DELAY_MILLIS = 300L
-        private const val DRAFT_SEND_PROTOCOL_DEBOUNCE_MILLIS = 250L
     }
 }
-
-private data class PendingDraftSeed(
-    val conversationId: String,
-    val draft: ConversationDraft,
-)
