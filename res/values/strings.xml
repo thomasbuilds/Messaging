@@ -666,6 +666,8 @@
     <string name="subject_dialog_title">Subject</string>
     <!-- Conversation overflow menu entry that opens the subject editor dialog. -->
     <string name="conversation_show_subject_field">Show subject field</string>
+    <!-- Conversation overflow menu entry that opens the SIM selector bottom sheet to pick which SIM sends the message. -->
+    <string name="conversation_switch_sims">Switch SIMs</string>
     <!-- The text shown as a label before the message subject input box -->
     <string name="conversation_message_view_subject_text">Subject:\u0020</string>
     <!-- When there's a subject in an mms, the subject + message are shown in a notification -->

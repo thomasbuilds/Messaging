@@ -348,7 +348,8 @@ private fun ConversationTopAppBarOverflowMenuContent(
     ConversationTopAppBarOverflowMenuItem(
         isVisible = visibility.isSimSelectorVisible,
         testTag = CONVERSATION_SIM_SELECTOR_MENU_ITEM_TEST_TAG,
-        label = simSelectorLabel,
+        label = stringResource(R.string.conversation_switch_sims),
+        secondaryLabel = simSelectorLabel,
         icon = Icons.Rounded.SimCard,
         onClick = { onItemClick(onSimSelectorClick) },
     )
@@ -409,6 +410,7 @@ private fun ConversationTopAppBarOverflowMenuItem(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,
+    secondaryLabel: String? = null,
 ) {
     if (!isVisible) {
         return
@@ -417,7 +419,22 @@ private fun ConversationTopAppBarOverflowMenuItem(
     DropdownMenuItem(
         modifier = Modifier.testTag(tag = testTag),
         text = {
-            Text(text = label)
+            when {
+                secondaryLabel.isNullOrEmpty() -> {
+                    Text(text = label)
+                }
+
+                else -> {
+                    Column {
+                        Text(text = label)
+                        Text(
+                            text = secondaryLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
         },
         leadingIcon = {
             Icon(
