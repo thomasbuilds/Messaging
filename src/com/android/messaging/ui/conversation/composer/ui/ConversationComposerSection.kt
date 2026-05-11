@@ -7,6 +7,7 @@ import androidx.compose.ui.focus.FocusRequester
 import com.android.messaging.domain.conversation.usecase.draft.model.ConversationDraftSendProtocol
 import com.android.messaging.ui.conversation.audio.model.ConversationAudioRecordingUiState
 import com.android.messaging.ui.conversation.composer.model.ComposerAttachmentUiModel
+import com.android.messaging.ui.conversation.composer.model.ConversationSegmentCounterUiState
 import kotlinx.collections.immutable.ImmutableList
 
 @Composable
@@ -17,6 +18,7 @@ internal fun ConversationComposerSection(
     messageText: String,
     subjectText: String,
     sendProtocol: ConversationDraftSendProtocol,
+    segmentCounter: ConversationSegmentCounterUiState?,
     isMessageFieldEnabled: Boolean,
     isAttachmentActionEnabled: Boolean,
     isRecordActionEnabled: Boolean,
@@ -54,6 +56,7 @@ internal fun ConversationComposerSection(
             messageText = messageText,
             subjectText = subjectText,
             sendProtocol = sendProtocol,
+            segmentCounter = segmentCounter,
             isMessageFieldEnabled = isMessageFieldEnabled,
             isAttachmentActionEnabled = isAttachmentActionEnabled,
             isRecordActionEnabled = isRecordActionEnabled,

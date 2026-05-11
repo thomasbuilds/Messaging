@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,14 +35,22 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import com.android.messaging.R
 import com.android.messaging.domain.conversation.usecase.draft.model.ConversationDraftSendProtocol
 import com.android.messaging.ui.conversation.CONVERSATION_COMPOSE_BAR_TEST_TAG
+import com.android.messaging.ui.conversation.CONVERSATION_SEGMENT_COUNTER_TEST_TAG
 import com.android.messaging.ui.conversation.CONVERSATION_SEND_BUTTON_SHAPE_CIRCLE
 import com.android.messaging.ui.conversation.CONVERSATION_SEND_BUTTON_TEST_TAG
 import com.android.messaging.ui.conversation.audio.model.ConversationAudioRecordingPhase
 import com.android.messaging.ui.conversation.audio.model.ConversationAudioRecordingUiState
+import com.android.messaging.ui.conversation.composer.model.ConversationSegmentCounterUiState
 import com.android.messaging.ui.conversation.composer.model.ConversationSendActionButtonGestureState
 import com.android.messaging.ui.conversation.composer.model.ConversationSendActionButtonMode
 import com.android.messaging.ui.conversation.conversationShape
@@ -63,6 +72,7 @@ internal fun ConversationComposeBar(
     messageText: String,
     subjectText: String,
     sendProtocol: ConversationDraftSendProtocol,
+    segmentCounter: ConversationSegmentCounterUiState?,
     isMessageFieldEnabled: Boolean,
     isAttachmentActionEnabled: Boolean,
     isRecordActionEnabled: Boolean,
@@ -103,6 +113,7 @@ internal fun ConversationComposeBar(
             messageText = messageText,
             subjectText = subjectText,
             sendProtocol = sendProtocol,
+            segmentCounter = segmentCounter,
             isMessageFieldEnabled = isMessageFieldEnabled,
             isAttachmentActionEnabled = isAttachmentActionEnabled,
             isRecordActionEnabled = isRecordActionEnabled,
@@ -186,6 +197,7 @@ internal fun ConversationComposeInputContent(
     messageText: String,
     subjectText: String,
     sendProtocol: ConversationDraftSendProtocol,
+    segmentCounter: ConversationSegmentCounterUiState?,
     isMessageFieldEnabled: Boolean,
     isAttachmentActionEnabled: Boolean,
     isRecordActionEnabled: Boolean,
@@ -250,6 +262,7 @@ internal fun ConversationComposeInputContent(
         ConversationComposeInputSendAction(
             audioRecording = audioRecording,
             inputState = inputState,
+            segmentCounter = segmentCounter,
             onSendClick = onSendClick,
             onSendActionLongClick = onSendActionLongClick,
             onAudioRecordingStartRequest = onAudioRecordingStartRequest,
@@ -265,6 +278,7 @@ private fun ConversationComposeInputSendAction(
     modifier: Modifier = Modifier,
     audioRecording: ConversationAudioRecordingUiState,
     inputState: ConversationComposeInputState,
+    segmentCounter: ConversationSegmentCounterUiState?,
     onSendClick: () -> Unit,
     onSendActionLongClick: () -> Unit,
     onAudioRecordingStartRequest: () -> Unit,
@@ -272,31 +286,40 @@ private fun ConversationComposeInputSendAction(
     onAudioRecordingLock: () -> Boolean,
     onAudioRecordingFinish: (Boolean) -> Unit,
 ) {
-    ConversationComposeSendAction(
-        modifier = modifier
-            .testTag(CONVERSATION_SEND_BUTTON_TEST_TAG)
-            .semantics {
-                conversationShape = CONVERSATION_SEND_BUTTON_SHAPE_CIRCLE
-            },
-        enabled = inputState.isRecordingControlEnabled,
-        mode = conversationComposeSendActionMode(
-            isRecordMode = inputState.isRecordMode,
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (segmentCounter != null && !inputState.isActiveRecording) {
+            SegmentCounterIndicator(state = segmentCounter)
+        }
+
+        ConversationComposeSendAction(
+            modifier = Modifier
+                .testTag(CONVERSATION_SEND_BUTTON_TEST_TAG)
+                .semantics {
+                    conversationShape = CONVERSATION_SEND_BUTTON_SHAPE_CIRCLE
+                },
+            enabled = inputState.isRecordingControlEnabled,
+            mode = conversationComposeSendActionMode(
+                isRecordMode = inputState.isRecordMode,
+                isRecordingLocked = audioRecording.isLocked,
+            ),
+            isRecordingActive = inputState.isActiveRecording,
             isRecordingLocked = audioRecording.isLocked,
-        ),
-        isRecordingActive = inputState.isActiveRecording,
-        isRecordingLocked = audioRecording.isLocked,
-        shouldShowLockAffordance = inputState.isActiveRecording && !audioRecording.isLocked,
-        lockProgress = inputState.lockProgress,
-        onClick = onSendClick,
-        onLockedStopClick = {
-            onAudioRecordingFinish(false)
-        },
-        onRecordGestureStart = onAudioRecordingStartRequest,
-        onRecordGestureMove = onAudioRecordingDrag,
-        onRecordGestureLock = onAudioRecordingLock,
-        onRecordGestureFinish = onAudioRecordingFinish,
-        onSendActionLongClick = onSendActionLongClick,
-    )
+            shouldShowLockAffordance = inputState.isActiveRecording && !audioRecording.isLocked,
+            lockProgress = inputState.lockProgress,
+            onClick = onSendClick,
+            onLockedStopClick = {
+                onAudioRecordingFinish(false)
+            },
+            onRecordGestureStart = onAudioRecordingStartRequest,
+            onRecordGestureMove = onAudioRecordingDrag,
+            onRecordGestureLock = onAudioRecordingLock,
+            onRecordGestureFinish = onAudioRecordingFinish,
+            onSendActionLongClick = onSendActionLongClick,
+        )
+    }
 }
 
 @Composable
@@ -528,6 +551,48 @@ private fun ConversationComposeSendAction(
             )
         }
     }
+}
+
+@Composable
+private fun SegmentCounterIndicator(
+    state: ConversationSegmentCounterUiState,
+) {
+    val displayText = when {
+        state.messageCount > 1 -> stringResource(
+            id = R.string.conversation_segment_counter_multi,
+            state.codePointsRemainingInCurrentMessage,
+            state.messageCount,
+        )
+
+        else -> state.codePointsRemainingInCurrentMessage.toString()
+    }
+
+    val accessibilityDescription = when {
+        state.messageCount > 1 -> pluralStringResource(
+            id = R.plurals.conversation_segment_counter_content_description,
+            count = state.codePointsRemainingInCurrentMessage,
+            state.codePointsRemainingInCurrentMessage,
+            state.messageCount,
+        )
+
+        else -> pluralStringResource(
+            id = R.plurals.conversation_segment_counter_single_content_description,
+            count = state.codePointsRemainingInCurrentMessage,
+            state.codePointsRemainingInCurrentMessage,
+        )
+    }
+
+    Text(
+        modifier = Modifier
+            .padding(bottom = 4.dp)
+            .clearAndSetSemantics {
+                testTag = CONVERSATION_SEGMENT_COUNTER_TEST_TAG
+                contentDescription = accessibilityDescription
+            },
+        text = displayText,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 private data class ConversationComposeInputState(

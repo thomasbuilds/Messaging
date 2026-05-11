@@ -1,13 +1,17 @@
 package com.android.messaging.ui.conversation.composer.mapper
 
+import com.android.messaging.data.conversation.model.draft.ConversationDraft
 import com.android.messaging.data.conversation.model.metadata.ConversationComposerAvailability
 import com.android.messaging.data.conversation.model.metadata.ConversationSubscription
+import com.android.messaging.datamodel.MessageTextStats
+import com.android.messaging.datamodel.data.ParticipantData
 import com.android.messaging.domain.conversation.usecase.draft.model.ConversationDraftSendProtocol
 import com.android.messaging.ui.conversation.audio.model.ConversationAudioRecordingPhase
 import com.android.messaging.ui.conversation.audio.model.ConversationAudioRecordingUiState
 import com.android.messaging.ui.conversation.composer.model.ComposerAttachmentUiModel
 import com.android.messaging.ui.conversation.composer.model.ConversationComposerUiState
 import com.android.messaging.ui.conversation.composer.model.ConversationDraftState
+import com.android.messaging.ui.conversation.composer.model.ConversationSegmentCounterUiState
 import com.android.messaging.ui.conversation.composer.model.ConversationSimSelectorUiState
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableList
@@ -77,12 +81,47 @@ internal class ConversationComposerUiStateMapperImpl @Inject constructor() :
             sendProtocol = visibleSendProtocol,
             attachmentCount = draft.attachments.size,
             pendingAttachmentCount = draftState.pendingAttachments.size,
-            messageCount = draft.messageCount,
-            codePointsRemainingInCurrentMessage = draft.codePointsRemainingInCurrentMessage,
+            segmentCounter = buildSegmentCounterUiState(
+                draft = draft,
+                sendProtocol = visibleSendProtocol,
+            ),
             isCheckingDraft = draft.isCheckingDraft,
             isSending = draft.isSending,
             disabledReason = composerAvailability.disabledReason,
         )
+    }
+
+    private fun buildSegmentCounterUiState(
+        draft: ConversationDraft,
+        sendProtocol: ConversationDraftSendProtocol,
+    ): ConversationSegmentCounterUiState? {
+        val isSms = sendProtocol == ConversationDraftSendProtocol.SMS
+        val messageText = draft.messageText
+
+        if (!isSms || messageText.isBlank()) {
+            return null
+        }
+
+        val stats = MessageTextStats().apply {
+            updateMessageTextStats(ParticipantData.DEFAULT_SELF_SUB_ID, messageText)
+        }
+
+        val messageCount = stats.numMessagesToBeSent
+        val codePointsRemaining = stats.codePointsRemainingInCurrentMessage
+
+        val isVisible = messageCount > 1 ||
+            codePointsRemaining <= SEGMENT_COUNTER_VISIBILITY_THRESHOLD
+
+        return when {
+            isVisible -> {
+                ConversationSegmentCounterUiState(
+                    codePointsRemainingInCurrentMessage = codePointsRemaining,
+                    messageCount = messageCount,
+                )
+            }
+
+            else -> null
+        }
     }
 
     private fun buildSimSelectorUiState(
@@ -97,5 +136,9 @@ internal class ConversationComposerUiStateMapperImpl @Inject constructor() :
             subscriptions = subscriptions,
             selectedSubscription = selected,
         )
+    }
+
+    private companion object {
+        private const val SEGMENT_COUNTER_VISIBILITY_THRESHOLD = 10
     }
 }

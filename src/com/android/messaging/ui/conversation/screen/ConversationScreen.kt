@@ -264,6 +264,7 @@ private fun ConversationScreenBottomBar(
         messageText = uiState.composer.messageText,
         subjectText = uiState.composer.subjectText,
         sendProtocol = uiState.composer.sendProtocol,
+        segmentCounter = uiState.composer.segmentCounter,
         isMessageFieldEnabled = uiState.composer.isMessageFieldEnabled,
         isAttachmentActionEnabled = uiState.composer.isAttachmentActionEnabled,
         isRecordActionEnabled = uiState.composer.isRecordActionEnabled,
