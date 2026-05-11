@@ -1,5 +1,6 @@
 package com.android.messaging.ui.conversation.metadata.delegate
 
+import com.android.messaging.data.conversation.model.metadata.ConversationMetadata
 import com.android.messaging.data.conversation.repository.ConversationsRepository
 import com.android.messaging.di.core.DefaultDispatcher
 import com.android.messaging.ui.conversation.common.ConversationScreenDelegate
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 internal interface ConversationMetadataDelegate :
@@ -55,6 +57,7 @@ internal class ConversationMetadataDelegateImpl @Inject constructor(
 
     private var boundScope: CoroutineScope? = null
     private var boundConversationIdFlow: StateFlow<String?>? = null
+    private var latestMetadata: ConversationMetadata? = null
 
     override fun bind(
         scope: CoroutineScope,
@@ -71,6 +74,7 @@ internal class ConversationMetadataDelegateImpl @Inject constructor(
             conversationIdFlow.collectLatest { conversationId ->
                 _state.value = ConversationMetadataUiState.Loading
                 _isDeleteConversationConfirmationVisible.value = false
+                latestMetadata = null
 
                 if (conversationId == null) {
                     return@collectLatest
@@ -78,6 +82,7 @@ internal class ConversationMetadataDelegateImpl @Inject constructor(
 
                 conversationsRepository
                     .getConversationMetadata(conversationId = conversationId)
+                    .onEach { metadata -> latestMetadata = metadata }
                     .map { metadata ->
                         when {
                             metadata != null -> {
@@ -132,11 +137,15 @@ internal class ConversationMetadataDelegateImpl @Inject constructor(
 
     override fun confirmDeleteConversation() {
         val conversationId = currentConversationId ?: return
+        val cutoffTimestamp = latestMetadata?.sortTimestamp ?: System.currentTimeMillis()
 
         _isDeleteConversationConfirmationVisible.value = false
 
         boundScope?.launch(defaultDispatcher) {
-            conversationsRepository.deleteConversation(conversationId = conversationId)
+            conversationsRepository.deleteConversation(
+                conversationId = conversationId,
+                cutoffTimestamp = cutoffTimestamp,
+            )
             _effects.emit(ConversationScreenEffect.CloseConversation)
         }
     }

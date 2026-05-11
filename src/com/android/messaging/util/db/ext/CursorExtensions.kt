@@ -16,3 +16,8 @@ fun Cursor.getInt(columnName: String): Int {
     return getColumnIndexOrThrow(columnName)
         .let(::getInt)
 }
+
+fun Cursor.getLong(columnName: String): Long {
+    return getColumnIndexOrThrow(columnName)
+        .let(::getLong)
+}

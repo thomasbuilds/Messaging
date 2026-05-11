@@ -22,6 +22,7 @@ import com.android.messaging.datamodel.data.ParticipantData
 import com.android.messaging.di.core.IoDispatcher
 import com.android.messaging.util.db.ReversedCursor
 import com.android.messaging.util.db.ext.getInt
+import com.android.messaging.util.db.ext.getLong
 import com.android.messaging.util.db.ext.getStringOrEmpty
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
@@ -60,7 +61,7 @@ internal interface ConversationsRepository {
 
     fun unarchiveConversation(conversationId: String)
 
-    fun deleteConversation(conversationId: String)
+    fun deleteConversation(conversationId: String, cutoffTimestamp: Long)
 }
 
 internal class ConversationsRepositoryImpl @Inject constructor(
@@ -182,14 +183,14 @@ internal class ConversationsRepositoryImpl @Inject constructor(
             ?.let(UpdateConversationArchiveStatusAction::unarchiveConversation)
     }
 
-    override fun deleteConversation(conversationId: String) {
+    override fun deleteConversation(conversationId: String, cutoffTimestamp: Long) {
         if (conversationId.isBlank()) {
             return
         }
 
         DeleteConversationAction.deleteConversation(
             conversationId,
-            System.currentTimeMillis(),
+            cutoffTimestamp,
         )
     }
 
@@ -282,6 +283,7 @@ internal class ConversationsRepositoryImpl @Inject constructor(
                         ?.takeIf { it.isNotBlank() },
                     isArchived = cursor.getInt(ConversationColumns.ARCHIVE_STATUS) == 1,
                     composerAvailability = ConversationComposerAvailability.editable(),
+                    sortTimestamp = cursor.getLong(ConversationColumns.SORT_TIMESTAMP),
                 )
             }
     }
