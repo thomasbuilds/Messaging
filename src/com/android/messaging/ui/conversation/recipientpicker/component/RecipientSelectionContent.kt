@@ -2,7 +2,7 @@
     ExperimentalMaterial3Api::class,
 )
 
-package com.android.messaging.ui.conversation.recipientpicker
+package com.android.messaging.ui.conversation.recipientpicker.component
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,7 +26,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-private val searchFieldShape = RoundedCornerShape(size = 22.dp)
+private val searchCardShape = RoundedCornerShape(size = 22.dp)
 
 @Composable
 internal fun RecipientSelectionContent(
@@ -40,6 +40,7 @@ internal fun RecipientSelectionContent(
     onPrimaryActionClick: () -> Unit = {},
     onQueryChanged: (String) -> Unit = {},
     onRecipientDestinationLongClick: OnRecipientDestinationAction? = null,
+    simSelectorSlot: (@Composable () -> Unit)? = null,
     topListContent: (@Composable () -> Unit)? = null,
 ) {
     val queryFocusRequester = remember { FocusRequester() }
@@ -61,13 +62,14 @@ internal fun RecipientSelectionContent(
         ) {
             Spacer(modifier = Modifier.height(height = 16.dp))
 
-            RecipientSelectionQueryField(
+            RecipientSelectionQueryCard(
                 query = uiState.picker.query,
                 enabled = uiState.isQueryEnabled,
                 prefixText = strings.queryPrefixText,
                 placeholderText = strings.queryPlaceholderText,
                 onQueryChanged = onQueryChanged,
                 focusRequester = queryFocusRequester,
+                simSelectorSlot = simSelectorSlot,
             )
 
             Spacer(modifier = Modifier.height(height = 12.dp))
@@ -82,6 +84,36 @@ internal fun RecipientSelectionContent(
                 onRecipientDestinationLongClick = onRecipientDestinationLongClick,
                 topListContent = topListContent,
             )
+        }
+    }
+}
+
+@Composable
+private fun RecipientSelectionQueryCard(
+    query: String,
+    enabled: Boolean,
+    prefixText: String,
+    placeholderText: String,
+    onQueryChanged: (String) -> Unit,
+    focusRequester: FocusRequester,
+    simSelectorSlot: (@Composable () -> Unit)?,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = searchCardShape,
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            RecipientSelectionQueryField(
+                query = query,
+                enabled = enabled,
+                prefixText = prefixText,
+                placeholderText = placeholderText,
+                onQueryChanged = onQueryChanged,
+                focusRequester = focusRequester,
+            )
+
+            simSelectorSlot?.invoke()
         }
     }
 }
@@ -103,11 +135,10 @@ private fun RecipientSelectionQueryField(
         onValueChange = onQueryChanged,
         enabled = enabled,
         singleLine = true,
-        shape = searchFieldShape,
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            disabledContainerColor = MaterialTheme.colorScheme.surface,
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent,

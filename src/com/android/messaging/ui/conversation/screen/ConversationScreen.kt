@@ -56,9 +56,11 @@ internal fun ConversationScreen(
     onNavigateBack: () -> Unit,
     pendingDraft: ConversationDraft? = null,
     pendingScrollPosition: Int? = null,
+    pendingSelfParticipantId: String? = null,
     pendingStartupAttachment: ConversationEntryStartupAttachment? = null,
     onPendingDraftConsumed: () -> Unit = {},
     onPendingScrollPositionConsumed: () -> Unit = {},
+    onPendingSelfParticipantIdConsumed: () -> Unit = {},
     onPendingStartupAttachmentConsumed: () -> Unit = {},
     screenModel: ConversationScreenModel = hiltViewModel<ConversationViewModel>(),
 ) {
@@ -84,6 +86,7 @@ internal fun ConversationScreen(
         launchGeneration = launchGeneration,
         cancelIncomingNotification = cancelIncomingNotification,
         pendingDraft = pendingDraft,
+        pendingSelfParticipantId = pendingSelfParticipantId,
         pendingStartupAttachment = pendingStartupAttachment,
         scaffoldUiState = scaffoldUiState,
         snackbarHostState = snackbarHostState,
@@ -92,6 +95,7 @@ internal fun ConversationScreen(
         screenModel = screenModel,
         onNavigateBack = onNavigateBack,
         onPendingDraftConsumed = onPendingDraftConsumed,
+        onPendingSelfParticipantIdConsumed = onPendingSelfParticipantIdConsumed,
         onPendingStartupAttachmentConsumed = onPendingStartupAttachmentConsumed,
     )
 

@@ -107,6 +107,7 @@ internal fun ConversationScreenRouteEffects(
     launchGeneration: Int?,
     cancelIncomingNotification: Boolean,
     pendingDraft: ConversationDraft?,
+    pendingSelfParticipantId: String?,
     pendingStartupAttachment: ConversationEntryStartupAttachment?,
     scaffoldUiState: ConversationScreenScaffoldUiState,
     snackbarHostState: SnackbarHostState,
@@ -115,15 +116,18 @@ internal fun ConversationScreenRouteEffects(
     screenModel: ConversationScreenModel,
     onNavigateBack: () -> Unit,
     onPendingDraftConsumed: () -> Unit,
+    onPendingSelfParticipantIdConsumed: () -> Unit,
     onPendingStartupAttachmentConsumed: () -> Unit,
 ) {
     ConversationPendingLaunchEffects(
         conversationId = conversationId,
         launchGeneration = launchGeneration,
         pendingDraft = pendingDraft,
+        pendingSelfParticipantId = pendingSelfParticipantId,
         pendingStartupAttachment = pendingStartupAttachment,
         screenModel = screenModel,
         onPendingDraftConsumed = onPendingDraftConsumed,
+        onPendingSelfParticipantIdConsumed = onPendingSelfParticipantIdConsumed,
         onPendingStartupAttachmentConsumed = onPendingStartupAttachmentConsumed,
     )
 
@@ -154,9 +158,11 @@ private fun ConversationPendingLaunchEffects(
     conversationId: String?,
     launchGeneration: Int?,
     pendingDraft: ConversationDraft?,
+    pendingSelfParticipantId: String?,
     pendingStartupAttachment: ConversationEntryStartupAttachment?,
     screenModel: ConversationScreenModel,
     onPendingDraftConsumed: () -> Unit,
+    onPendingSelfParticipantIdConsumed: () -> Unit,
     onPendingStartupAttachmentConsumed: () -> Unit,
 ) {
     LaunchedEffect(conversationId, screenModel) {
@@ -170,6 +176,22 @@ private fun ConversationPendingLaunchEffects(
                 draft = pendingDraft,
             )
             onPendingDraftConsumed()
+        }
+    }
+
+    LaunchedEffect(
+        conversationId,
+        launchGeneration,
+        pendingSelfParticipantId,
+        screenModel,
+    ) {
+        if (
+            conversationId != null &&
+            launchGeneration != null &&
+            pendingSelfParticipantId != null
+        ) {
+            screenModel.onSimSelected(selfParticipantId = pendingSelfParticipantId)
+            onPendingSelfParticipantIdConsumed()
         }
     }
 

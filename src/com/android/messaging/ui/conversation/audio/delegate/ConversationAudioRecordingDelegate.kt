@@ -5,8 +5,8 @@ import android.os.SystemClock
 import com.android.messaging.data.conversation.model.draft.ConversationDraftAttachment
 import com.android.messaging.data.conversation.model.draft.ConversationDraftPendingAttachment
 import com.android.messaging.data.conversation.model.draft.ConversationDraftPendingAttachmentKind
-import com.android.messaging.data.conversation.repository.ConversationSubscriptionsRepository
 import com.android.messaging.data.media.repository.ConversationAttachmentsRepository
+import com.android.messaging.data.subscription.repository.SubscriptionsRepository
 import com.android.messaging.di.core.DefaultDispatcher
 import com.android.messaging.ui.conversation.audio.model.ConversationAudioRecordingPhase
 import com.android.messaging.ui.conversation.audio.model.ConversationAudioRecordingUiState
@@ -51,7 +51,7 @@ internal interface ConversationAudioRecordingDelegate :
 
 internal class ConversationAudioRecordingDelegateImpl @Inject constructor(
     private val conversationAttachmentsRepository: ConversationAttachmentsRepository,
-    private val conversationSubscriptionsRepository: ConversationSubscriptionsRepository,
+    private val subscriptionsRepository: SubscriptionsRepository,
     private val conversationDraftDelegate: ConversationDraftDelegate,
     @param:DefaultDispatcher
     private val defaultDispatcher: CoroutineDispatcher,
@@ -362,7 +362,7 @@ internal class ConversationAudioRecordingDelegateImpl @Inject constructor(
 
     private suspend fun startRecordingInBackground(selfParticipantId: String) {
         val resolvedMediaRecorder = LevelTrackingMediaRecorder()
-        val maxMessageSize = conversationSubscriptionsRepository
+        val maxMessageSize = subscriptionsRepository
             .resolveMaxMessageSize(selfParticipantId = selfParticipantId)
             .first()
 

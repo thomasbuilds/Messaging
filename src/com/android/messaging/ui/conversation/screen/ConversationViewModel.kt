@@ -6,8 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.messaging.R
 import com.android.messaging.data.conversation.model.draft.ConversationDraft
-import com.android.messaging.data.conversation.repository.ConversationSubscriptionsRepository
 import com.android.messaging.data.media.model.ConversationCapturedMedia
+import com.android.messaging.data.subscription.repository.SubscriptionsRepository
 import com.android.messaging.datamodel.MessagingContentProvider
 import com.android.messaging.di.core.DefaultDispatcher
 import com.android.messaging.domain.conversation.usecase.action.CreateDefaultSmsRoleRequest
@@ -139,7 +139,7 @@ internal class ConversationViewModel @Inject constructor(
     private val conversationMetadataDelegate: ConversationMetadataDelegate,
     private val conversationFocusDelegate: ConversationFocusDelegate,
     private val conversationComposerUiStateMapper: ConversationComposerUiStateMapper,
-    private val conversationSubscriptionsRepository: ConversationSubscriptionsRepository,
+    private val subscriptionsRepository: SubscriptionsRepository,
     private val canAddMoreConversationParticipants: CanAddMoreConversationParticipants,
     private val createDefaultSmsRoleRequest: CreateDefaultSmsRoleRequest,
     private val isDeviceVoiceCapable: IsDeviceVoiceCapable,
@@ -160,7 +160,7 @@ internal class ConversationViewModel @Inject constructor(
 
     override val effects = _effects.asSharedFlow()
 
-    private val subscriptionsFlow = conversationSubscriptionsRepository
+    private val subscriptionsFlow = subscriptionsRepository
         .observeActiveSubscriptions()
         .stateIn(
             scope = viewModelScope,

@@ -4,8 +4,8 @@ import com.android.messaging.data.conversation.mapper.ConversationDraftMessageDa
 import com.android.messaging.data.conversation.model.draft.ConversationDraft
 import com.android.messaging.data.conversation.model.draft.ConversationDraftAttachment
 import com.android.messaging.data.conversation.model.send.ConversationSendData
-import com.android.messaging.data.conversation.repository.ConversationSubscriptionsRepository
 import com.android.messaging.data.conversation.repository.ConversationsRepository
+import com.android.messaging.data.subscription.repository.SubscriptionsRepository
 import com.android.messaging.datamodel.action.InsertNewMessageAction
 import com.android.messaging.datamodel.data.MessageData
 import com.android.messaging.datamodel.data.ParticipantData
@@ -42,7 +42,7 @@ internal interface SendConversationDraft {
 
 internal class SendConversationDraftImpl @Inject constructor(
     private val conversationsRepository: ConversationsRepository,
-    private val conversationSubscriptionsRepository: ConversationSubscriptionsRepository,
+    private val subscriptionsRepository: SubscriptionsRepository,
     private val getConversationDraftSendProtocol: GetConversationDraftSendProtocol,
     private val conversationDraftMessageDataMapper: ConversationDraftMessageDataMapper,
     @param:IoDispatcher
@@ -259,7 +259,7 @@ internal class SendConversationDraftImpl @Inject constructor(
 
         val attachments = message.parts.filter { part -> part.isAttachment }
 
-        if (attachments.size > conversationSubscriptionsRepository.resolveAttachmentLimit()) {
+        if (attachments.size > subscriptionsRepository.resolveAttachmentLimit()) {
             throw MessageLimitExceededException(conversationId = conversationId)
         }
 

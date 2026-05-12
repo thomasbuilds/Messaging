@@ -331,6 +331,10 @@
     <string name="new_chat_recipient_prefix">To:</string>
     <!-- Placeholder text shown in the new chat recipient search field. -->
     <string name="new_chat_query_hint">Type name or phone number</string>
+    <!-- Prefix label shown before the SIM selector on the new chat screen. -->
+    <string name="new_chat_sim_selector_prefix">With:</string>
+    <!-- Content description for the SIM selector chip on the new chat screen. -->
+    <string name="new_chat_sim_selector_chip_content_description"><xliff:g id="sim">%1$s</xliff:g> selected, choose SIM</string>
 
     <!-- An enumeration comma for separating multiple names in notifications. [CHAR LIMIT=2] -->
     <string name="enumeration_comma">,\u0020</string>

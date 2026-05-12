@@ -23,7 +23,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.android.messaging.data.conversation.model.metadata.ConversationSubscription
+import com.android.messaging.data.subscription.model.Subscription
 import com.android.messaging.ui.conversation.CONVERSATION_MESSAGES_LIST_TEST_TAG
 import com.android.messaging.ui.conversation.conversationMessageItemTestTag
 import com.android.messaging.ui.conversation.messages.model.message.ConversationMessageUiModel
@@ -65,7 +65,7 @@ internal fun ConversationMessages(
     listState: LazyListState,
     selectedMessageIds: ImmutableSet<String> = persistentSetOf(),
     showIncomingSenderLabels: Boolean = true,
-    subscriptions: ImmutableList<ConversationSubscription> = persistentListOf(),
+    subscriptions: ImmutableList<Subscription> = persistentListOf(),
     onAttachmentClick: (contentType: String, contentUri: String) -> Unit,
     onExternalUriClick: (String) -> Unit,
     onMessageClick: (String) -> Unit,

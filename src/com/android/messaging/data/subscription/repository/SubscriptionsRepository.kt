@@ -1,10 +1,10 @@
-package com.android.messaging.data.conversation.repository
+package com.android.messaging.data.subscription.repository
 
 import android.content.ContentResolver
 import android.database.ContentObserver
 import android.net.Uri
-import com.android.messaging.data.conversation.model.metadata.ConversationSubscription
 import com.android.messaging.data.conversation.model.metadata.ConversationSubscriptionLabel
+import com.android.messaging.data.subscription.model.Subscription
 import com.android.messaging.datamodel.DatabaseHelper.ParticipantColumns
 import com.android.messaging.datamodel.MessagingContentProvider
 import com.android.messaging.datamodel.data.ParticipantData
@@ -15,6 +15,7 @@ import com.android.messaging.sms.MmsConfig
 import com.android.messaging.util.BugleGservices
 import com.android.messaging.util.BugleGservicesKeys
 import com.android.messaging.util.LogUtil
+import com.android.messaging.util.PhoneUtils
 import com.android.messaging.util.core.extension.typedFlow
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableList
@@ -31,22 +32,24 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 
-internal interface ConversationSubscriptionsRepository {
-    fun observeActiveSubscriptions(): Flow<ImmutableList<ConversationSubscription>>
+internal interface SubscriptionsRepository {
+    fun observeActiveSubscriptions(): Flow<ImmutableList<Subscription>>
+
+    fun getDefaultSmsSubscriptionId(): Int
 
     fun resolveAttachmentLimit(): Int
 
     fun resolveMaxMessageSize(selfParticipantId: String): Flow<Int>
 }
 
-internal class ConversationSubscriptionsRepositoryImpl @Inject constructor(
+internal class SubscriptionsRepositoryImpl @Inject constructor(
     private val contentResolver: ContentResolver,
     private val debugSimEmulationSource: DebugSimEmulationSource,
     @param:IoDispatcher
     private val ioDispatcher: CoroutineDispatcher,
-) : ConversationSubscriptionsRepository {
+) : SubscriptionsRepository {
 
-    override fun observeActiveSubscriptions(): Flow<ImmutableList<ConversationSubscription>> {
+    override fun observeActiveSubscriptions(): Flow<ImmutableList<Subscription>> {
         val uri = MessagingContentProvider.PARTICIPANTS_URI
 
         val realSubscriptions = observeUri(uri = uri)
@@ -65,6 +68,10 @@ internal class ConversationSubscriptionsRepositoryImpl @Inject constructor(
                 mode = emulationMode,
             )
         }
+    }
+
+    override fun getDefaultSmsSubscriptionId(): Int {
+        return PhoneUtils.getDefault().defaultSmsSubscriptionId
     }
 
     override fun resolveAttachmentLimit(): Int {
@@ -90,9 +97,9 @@ internal class ConversationSubscriptionsRepositoryImpl @Inject constructor(
     }
 
     private fun applyDebugEmulation(
-        subscriptions: ImmutableList<ConversationSubscription>,
+        subscriptions: ImmutableList<Subscription>,
         mode: DebugSimEmulationMode,
-    ): ImmutableList<ConversationSubscription> {
+    ): ImmutableList<Subscription> {
         return when (mode) {
             DebugSimEmulationMode.DEFAULT -> subscriptions
             DebugSimEmulationMode.SINGLE -> applySingleSimEmulation(subscriptions = subscriptions)
@@ -101,8 +108,8 @@ internal class ConversationSubscriptionsRepositoryImpl @Inject constructor(
     }
 
     private fun applySingleSimEmulation(
-        subscriptions: ImmutableList<ConversationSubscription>,
-    ): ImmutableList<ConversationSubscription> {
+        subscriptions: ImmutableList<Subscription>,
+    ): ImmutableList<Subscription> {
         val hasRealSubscription = subscriptions.isNotEmpty()
 
         if (hasRealSubscription) {
@@ -115,8 +122,8 @@ internal class ConversationSubscriptionsRepositoryImpl @Inject constructor(
     }
 
     private fun applyDualSimEmulation(
-        subscriptions: ImmutableList<ConversationSubscription>,
-    ): ImmutableList<ConversationSubscription> {
+        subscriptions: ImmutableList<Subscription>,
+    ): ImmutableList<Subscription> {
         return when (subscriptions.size) {
             0 -> {
                 persistentListOf(
@@ -132,8 +139,8 @@ internal class ConversationSubscriptionsRepositoryImpl @Inject constructor(
     }
 
     private fun pairRealSubscriptionWithFake(
-        realSubscription: ConversationSubscription,
-    ): ImmutableList<ConversationSubscription> {
+        realSubscription: Subscription,
+    ): ImmutableList<Subscription> {
         val fakeSlot = when (realSubscription.displaySlotId) {
             1 -> 2
             else -> 1
@@ -149,9 +156,10 @@ internal class ConversationSubscriptionsRepositoryImpl @Inject constructor(
     private fun fakeSubscription(
         slotId: Int,
         colorIndex: Int,
-    ): ConversationSubscription {
-        return ConversationSubscription(
+    ): Subscription {
+        return Subscription(
             selfParticipantId = "$FAKE_SIM_ID_PREFIX$slotId",
+            subId = ParticipantData.DEFAULT_SELF_SUB_ID,
             label = ConversationSubscriptionLabel.DebugFake(slotId = slotId),
             displayDestination = null,
             displaySlotId = slotId,
@@ -176,7 +184,7 @@ internal class ConversationSubscriptionsRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun queryActiveSubscriptions(): ImmutableList<ConversationSubscription> {
+    private fun queryActiveSubscriptions(): ImmutableList<Subscription> {
         return contentResolver
             .query(
                 MessagingContentProvider.PARTICIPANTS_URI,
@@ -186,7 +194,7 @@ internal class ConversationSubscriptionsRepositoryImpl @Inject constructor(
                 null,
             )
             ?.use { cursor ->
-                val subscriptions = persistentListOf<ConversationSubscription>().builder()
+                val subscriptions = persistentListOf<Subscription>().builder()
 
                 while (cursor.moveToNext()) {
                     val participant = ParticipantData.getFromCursor(cursor)
@@ -256,11 +264,12 @@ internal class ConversationSubscriptionsRepositoryImpl @Inject constructor(
         )
     }
 
-    private fun ParticipantData.toConversationSubscription(): ConversationSubscription {
+    private fun ParticipantData.toConversationSubscription(): Subscription {
         val slotId = displaySlotId
 
-        return ConversationSubscription(
+        return Subscription(
             selfParticipantId = id,
+            subId = subId,
             label = when {
                 subscriptionName.isNullOrBlank() -> ConversationSubscriptionLabel.Slot(
                     slotId = slotId,

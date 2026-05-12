@@ -39,6 +39,8 @@ internal const val ADD_PARTICIPANTS_CONFIRM_BUTTON_TEST_TAG = "add_participants_
 internal const val NEW_CHAT_CREATE_GROUP_NEXT_BUTTON_TEST_TAG = "new_chat_create_group_next_button"
 internal const val NEW_CHAT_CONTACT_RESOLVING_INDICATOR_TEST_TAG =
     "new_chat_contact_resolving_indicator"
+internal const val NEW_CHAT_SIM_SELECTOR_CHIP_TEST_TAG = "new_chat_sim_selector_chip"
+internal const val NEW_CHAT_SIM_SELECTOR_DROPDOWN_TEST_TAG = "new_chat_sim_selector_dropdown"
 internal const val CONVERSATION_SEND_BUTTON_SHAPE_CIRCLE = "circle"
 internal const val CONVERSATION_SEND_BUTTON_TEST_TAG = "conversation_send_button"
 internal const val CONVERSATION_TEXT_FIELD_TEST_TAG = "conversation_text_field"
@@ -58,6 +60,10 @@ internal const val CONVERSATION_SUBJECT_DIALOG_CLEAR_BUTTON_TEST_TAG =
 
 internal fun conversationSimSelectorItemTestTag(selfParticipantId: String): String {
     return "conversation_sim_selector_item_$selfParticipantId"
+}
+
+internal fun newChatSimSelectorItemTestTag(selfParticipantId: String): String {
+    return "new_chat_sim_selector_item_$selfParticipantId"
 }
 
 internal fun conversationMessageItemTestTag(messageId: String): String {

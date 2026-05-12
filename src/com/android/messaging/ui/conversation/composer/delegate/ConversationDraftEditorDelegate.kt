@@ -3,7 +3,7 @@ package com.android.messaging.ui.conversation.composer.delegate
 import com.android.messaging.data.conversation.model.draft.ConversationDraft
 import com.android.messaging.data.conversation.model.draft.ConversationDraftAttachment
 import com.android.messaging.data.conversation.model.draft.ConversationDraftPendingAttachment
-import com.android.messaging.data.conversation.repository.ConversationSubscriptionsRepository
+import com.android.messaging.data.subscription.repository.SubscriptionsRepository
 import com.android.messaging.domain.conversation.usecase.draft.ResolveConversationDraftSendProtocol
 import com.android.messaging.domain.conversation.usecase.draft.ResolveDraftAttachmentsWithinLimit
 import com.android.messaging.domain.conversation.usecase.draft.model.ConversationDraftSendProtocol
@@ -82,7 +82,7 @@ internal interface ConversationDraftEditorDelegate {
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 internal class ConversationDraftEditorDelegateImpl @Inject constructor(
-    private val conversationSubscriptionsRepository: ConversationSubscriptionsRepository,
+    private val subscriptionsRepository: SubscriptionsRepository,
     private val resolveConversationDraftSendProtocol: ResolveConversationDraftSendProtocol,
     private val resolveDraftAttachmentsWithinLimit: ResolveDraftAttachmentsWithinLimit,
 ) : ConversationDraftEditorDelegate {
@@ -177,7 +177,7 @@ internal class ConversationDraftEditorDelegateImpl @Inject constructor(
         val currentAttachmentCount = currentDraftEditorState.effectiveDraft.attachments.size +
             currentDraftEditorState.pendingAttachments.size
 
-        return currentAttachmentCount < conversationSubscriptionsRepository.resolveAttachmentLimit()
+        return currentAttachmentCount < subscriptionsRepository.resolveAttachmentLimit()
     }
 
     override fun addPendingAttachment(pendingAttachment: ConversationDraftPendingAttachment) {

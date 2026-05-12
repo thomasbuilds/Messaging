@@ -2,7 +2,7 @@ package com.android.messaging.ui.conversation.composer.mapper
 
 import com.android.messaging.data.conversation.model.draft.ConversationDraft
 import com.android.messaging.data.conversation.model.metadata.ConversationComposerAvailability
-import com.android.messaging.data.conversation.model.metadata.ConversationSubscription
+import com.android.messaging.data.subscription.model.Subscription
 import com.android.messaging.datamodel.MessageTextStats
 import com.android.messaging.datamodel.data.ParticipantData
 import com.android.messaging.domain.conversation.usecase.draft.model.ConversationDraftSendProtocol
@@ -22,7 +22,7 @@ internal interface ConversationComposerUiStateMapper {
         draftState: ConversationDraftState,
         attachments: ImmutableList<ComposerAttachmentUiModel>,
         composerAvailability: ConversationComposerAvailability,
-        subscriptions: ImmutableList<ConversationSubscription>,
+        subscriptions: ImmutableList<Subscription>,
     ): ConversationComposerUiState
 }
 
@@ -34,7 +34,7 @@ internal class ConversationComposerUiStateMapperImpl @Inject constructor() :
         draftState: ConversationDraftState,
         attachments: ImmutableList<ComposerAttachmentUiModel>,
         composerAvailability: ConversationComposerAvailability,
-        subscriptions: ImmutableList<ConversationSubscription>,
+        subscriptions: ImmutableList<Subscription>,
     ): ConversationComposerUiState {
         val draft = draftState.draft
         val hasWorkingDraft = draft.hasContent
@@ -125,7 +125,7 @@ internal class ConversationComposerUiStateMapperImpl @Inject constructor() :
     }
 
     private fun buildSimSelectorUiState(
-        subscriptions: ImmutableList<ConversationSubscription>,
+        subscriptions: ImmutableList<Subscription>,
         selfParticipantId: String,
     ): ConversationSimSelectorUiState {
         val selected = subscriptions

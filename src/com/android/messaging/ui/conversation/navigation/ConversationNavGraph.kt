@@ -141,12 +141,16 @@ private fun conversationScreenRouteContent(
             },
             pendingDraft = pendingPayload.draft,
             pendingScrollPosition = pendingPayload.scrollPosition,
+            pendingSelfParticipantId = pendingPayload.selfParticipantId,
             pendingStartupAttachment = pendingPayload.startupAttachment,
             onPendingDraftConsumed = {
                 entryModel.onDraftPayloadConsumed(conversationId = conversationId)
             },
             onPendingScrollPositionConsumed = {
                 entryModel.onScrollPositionConsumed(conversationId = conversationId)
+            },
+            onPendingSelfParticipantIdConsumed = {
+                entryModel.onPendingSelfParticipantIdConsumed(conversationId = conversationId)
             },
             onPendingStartupAttachmentConsumed = {
                 entryModel.onStartupAttachmentConsumed(conversationId = conversationId)
@@ -181,8 +185,10 @@ private fun newChatRouteContent(
                     onFinish = routeState.onFinish.value,
                 )
             },
+            onSimSelected = entryModel::onSimSelected,
             resolvingRecipientDestination = entryUiState.resolvingRecipientDestination,
             selectedGroupRecipientDestinations = entryUiState.selectedGroupRecipientDestinations,
+            simSelectorUiState = entryUiState.simSelectorState,
         )
     }
 }
@@ -309,6 +315,7 @@ private fun pendingLaunchPayloadForConversation(
     return ConversationPendingLaunchPayload(
         draft = entryUiState.pendingDraft,
         scrollPosition = entryUiState.pendingScrollPosition,
+        selfParticipantId = entryUiState.pendingSelfParticipantId,
         startupAttachment = entryUiState.pendingStartupAttachment,
     )
 }
@@ -337,6 +344,7 @@ private data class ConversationNavEffectState(
 private data class ConversationPendingLaunchPayload(
     val draft: ConversationDraft? = null,
     val scrollPosition: Int? = null,
+    val selfParticipantId: String? = null,
     val startupAttachment: ConversationEntryStartupAttachment? = null,
 )
 

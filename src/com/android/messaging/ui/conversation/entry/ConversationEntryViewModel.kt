@@ -5,17 +5,22 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.messaging.R
 import com.android.messaging.data.conversation.mapper.ConversationMessageDataDraftMapper
+import com.android.messaging.data.subscription.model.Subscription
+import com.android.messaging.data.subscription.repository.SubscriptionsRepository
 import com.android.messaging.datamodel.data.MessageData
+import com.android.messaging.datamodel.data.ParticipantData
 import com.android.messaging.di.core.MainDispatcher
 import com.android.messaging.domain.conversation.usecase.participant.IsConversationRecipientLimitExceeded
 import com.android.messaging.domain.conversation.usecase.participant.ResolveConversationId
 import com.android.messaging.domain.conversation.usecase.participant.model.ResolveConversationIdResult
+import com.android.messaging.ui.conversation.composer.model.ConversationSimSelectorUiState
 import com.android.messaging.ui.conversation.entry.model.ConversationEntryEffect
 import com.android.messaging.ui.conversation.entry.model.ConversationEntryLaunchRequest
 import com.android.messaging.ui.conversation.entry.model.ConversationEntryStartupAttachment
 import com.android.messaging.ui.conversation.entry.model.ConversationEntryUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineDispatcher
@@ -44,9 +49,13 @@ internal interface ConversationEntryScreenModel {
     fun onNewChatRecipientLongPressed(destination: String)
     fun onNewChatRecipientSelected(destination: String)
 
+    fun onSimSelected(selfParticipantId: String)
+
     fun onDraftPayloadConsumed(conversationId: String)
 
     fun onScrollPositionConsumed(conversationId: String)
+
+    fun onPendingSelfParticipantIdConsumed(conversationId: String)
 
     fun onStartupAttachmentConsumed(conversationId: String)
 
@@ -61,6 +70,7 @@ internal const val RESOLVING_CONVERSATION_INDICATOR_DELAY_MILLIS = 200L
 @HiltViewModel
 internal class ConversationEntryViewModel @Inject constructor(
     private val conversationMessageDataDraftMapper: ConversationMessageDataDraftMapper,
+    private val subscriptionsRepository: SubscriptionsRepository,
     private val isConversationRecipientLimitExceeded: IsConversationRecipientLimitExceeded,
     private val resolveConversationId: ResolveConversationId,
     private val savedStateHandle: SavedStateHandle,
@@ -79,6 +89,10 @@ internal class ConversationEntryViewModel @Inject constructor(
 
     override val effects = _effects.asSharedFlow()
     override val uiState = _uiState.asStateFlow()
+
+    init {
+        observeActiveSubscriptions()
+    }
 
     override fun onCreateGroupRequested() {
         // Re-entering group creation should also abandon any in-flight resolution.
@@ -146,6 +160,7 @@ internal class ConversationEntryViewModel @Inject constructor(
             resolveConversation(
                 destinations = destinations,
                 resolvingRecipientDestination = null,
+                selfParticipantId = selectedSelfParticipantId(),
             )
         }
     }
@@ -199,6 +214,7 @@ internal class ConversationEntryViewModel @Inject constructor(
                     contentUri = launchRequest.startupAttachmentUri,
                     contentType = launchRequest.startupAttachmentType,
                 ),
+                simSelectorState = _uiState.value.simSelectorState,
             ),
         )
         savedStateHandle[PENDING_DRAFT_DATA_KEY] = launchRequest.draftData
@@ -216,6 +232,25 @@ internal class ConversationEntryViewModel @Inject constructor(
         resolveConversation(
             destinations = listOf(destination),
             resolvingRecipientDestination = destination,
+            selfParticipantId = selectedSelfParticipantId(),
+        )
+    }
+
+    override fun onSimSelected(selfParticipantId: String) {
+        val currentSimState = _uiState.value.simSelectorState
+        val selectedSubscription = currentSimState.subscriptions
+            .firstOrNull { it.selfParticipantId == selfParticipantId }
+            ?: return
+
+        savedStateHandle[SIM_SELECTED_SELF_PARTICIPANT_ID_KEY] = selectedSubscription
+            .selfParticipantId
+
+        updateUiState(
+            _uiState.value.copy(
+                simSelectorState = currentSimState.copy(
+                    selectedSubscription = selectedSubscription,
+                ),
+            ),
         )
     }
 
@@ -263,18 +298,46 @@ internal class ConversationEntryViewModel @Inject constructor(
         }
     }
 
+    override fun onPendingSelfParticipantIdConsumed(conversationId: String) {
+        val currentUiState = _uiState.value
+
+        val hasPendingSelfParticipantId = currentUiState.pendingSelfParticipantId != null
+
+        if (currentUiState.conversationId == conversationId && hasPendingSelfParticipantId) {
+            updateUiState(
+                currentUiState.copy(
+                    pendingSelfParticipantId = null,
+                ),
+            )
+        }
+    }
+
     override fun navigateBack() {
         cancelConversationResolution()
         _effects.tryEmit(ConversationEntryEffect.NavigateBack)
     }
 
     override fun navigateToConversation(conversationId: String) {
+        navigateToConversation(
+            conversationId = conversationId,
+            selfParticipantId = null,
+        )
+    }
+
+    private fun navigateToConversation(
+        conversationId: String,
+        selfParticipantId: String?,
+    ) {
+        val pendingSelfParticipantId = selfParticipantId
+            ?.takeUnless { it.isBlank() }
+
         updateUiState(
             _uiState.value.copy(
                 conversationId = conversationId,
                 isCreatingGroup = false,
                 isResolvingConversation = false,
                 isResolvingConversationIndicatorVisible = false,
+                pendingSelfParticipantId = pendingSelfParticipantId,
                 resolvingRecipientDestination = null,
                 selectedGroupRecipientDestinations = persistentListOf(),
             ),
@@ -326,6 +389,72 @@ internal class ConversationEntryViewModel @Inject constructor(
                 ?.toImmutableList()
                 ?: persistentListOf(),
         )
+    }
+
+    private fun observeActiveSubscriptions() {
+        viewModelScope.launch {
+            subscriptionsRepository
+                .observeActiveSubscriptions()
+                .collect(::reconcileSimSelection)
+        }
+    }
+
+    private fun reconcileSimSelection(subscriptions: ImmutableList<Subscription>) {
+        val persistedSelfParticipantId = savedStateHandle
+            .get<String>(SIM_SELECTED_SELF_PARTICIPANT_ID_KEY)
+
+        val resolvedSelection = resolveSimSelection(
+            subscriptions = subscriptions,
+            persistedSelfParticipantId = persistedSelfParticipantId,
+        )
+
+        savedStateHandle[SIM_SELECTED_SELF_PARTICIPANT_ID_KEY] = resolvedSelection
+            ?.selfParticipantId
+
+        updateUiState(
+            _uiState.value.copy(
+                simSelectorState = ConversationSimSelectorUiState(
+                    subscriptions = subscriptions,
+                    selectedSubscription = resolvedSelection,
+                ),
+            ),
+        )
+    }
+
+    private fun resolveSimSelection(
+        subscriptions: ImmutableList<Subscription>,
+        persistedSelfParticipantId: String?,
+    ): Subscription? {
+        val persistedMatch = subscriptions.firstOrNull { subscription ->
+            subscription.selfParticipantId == persistedSelfParticipantId
+        }
+
+        return when {
+            persistedMatch != null -> persistedMatch
+            else -> resolveDefaultSubscription(subscriptions)
+        }
+    }
+
+    private fun resolveDefaultSubscription(
+        subscriptions: ImmutableList<Subscription>,
+    ): Subscription? {
+        val defaultSubId = subscriptionsRepository.getDefaultSmsSubscriptionId()
+
+        val matchingBySubId = when {
+            defaultSubId == ParticipantData.DEFAULT_SELF_SUB_ID -> null
+
+            else -> {
+                subscriptions.firstOrNull { subscription ->
+                    subscription.subId == defaultSubId
+                }
+            }
+        }
+
+        return matchingBySubId ?: subscriptions.firstOrNull()
+    }
+
+    private fun selectedSelfParticipantId(): String? {
+        return _uiState.value.simSelectorState.selectedSubscription?.selfParticipantId
     }
 
     private fun clearConversationResolutionState() {
@@ -415,6 +544,7 @@ internal class ConversationEntryViewModel @Inject constructor(
     private fun resolveConversation(
         destinations: List<String>,
         resolvingRecipientDestination: String?,
+        selfParticipantId: String?,
     ) {
         resolveConversationJob = viewModelScope.launch(mainDispatcher) {
             startConversationResolution(resolvingRecipientDestination)
@@ -422,8 +552,10 @@ internal class ConversationEntryViewModel @Inject constructor(
             val showIndicatorJob = launchDelayedResolutionIndicator()
 
             try {
-                resolveConversationId(destinations)
-                    .let(::handleResolveConversationIdResult)
+                handleResolveConversationIdResult(
+                    result = resolveConversationId(destinations),
+                    selfParticipantId = selfParticipantId,
+                )
             } finally {
                 showIndicatorJob.cancel()
                 resolveConversationJob = null
@@ -438,10 +570,16 @@ internal class ConversationEntryViewModel @Inject constructor(
         }
     }
 
-    private fun handleResolveConversationIdResult(result: ResolveConversationIdResult) {
+    private fun handleResolveConversationIdResult(
+        result: ResolveConversationIdResult,
+        selfParticipantId: String?,
+    ) {
         when (result) {
             is ResolveConversationIdResult.Resolved -> {
-                navigateToConversation(conversationId = result.conversationId)
+                navigateToConversation(
+                    conversationId = result.conversationId,
+                    selfParticipantId = selfParticipantId,
+                )
             }
 
             ResolveConversationIdResult.EmptyDestinations,
@@ -501,5 +639,6 @@ internal class ConversationEntryViewModel @Inject constructor(
         private const val PROCESSED_LAUNCH_GENERATION_KEY = "processed_launch_generation"
         private const val SELECTED_GROUP_RECIPIENT_DESTINATIONS_KEY =
             "selected_group_recipient_destinations"
+        private const val SIM_SELECTED_SELF_PARTICIPANT_ID_KEY = "sim_selected_self_participant_id"
     }
 }

@@ -1,7 +1,7 @@
 package com.android.messaging.domain.conversation.usecase.draft
 
 import com.android.messaging.data.conversation.model.draft.ConversationDraftAttachment
-import com.android.messaging.data.conversation.repository.ConversationSubscriptionsRepository
+import com.android.messaging.data.subscription.repository.SubscriptionsRepository
 import com.android.messaging.domain.conversation.usecase.draft.model.DraftAttachmentLimitResult
 import javax.inject.Inject
 
@@ -13,7 +13,7 @@ internal interface ResolveDraftAttachmentsWithinLimit {
 }
 
 internal class ResolveDraftAttachmentsWithinLimitImpl @Inject constructor(
-    private val conversationSubscriptionsRepository: ConversationSubscriptionsRepository,
+    private val subscriptionsRepository: SubscriptionsRepository,
 ) : ResolveDraftAttachmentsWithinLimit {
 
     override operator fun invoke(
@@ -23,7 +23,7 @@ internal class ResolveDraftAttachmentsWithinLimitImpl @Inject constructor(
         return resolveAttachmentsWithinLimit(
             currentAttachments = currentAttachments,
             attachmentsToAdd = attachmentsToAdd,
-            attachmentLimit = conversationSubscriptionsRepository.resolveAttachmentLimit(),
+            attachmentLimit = subscriptionsRepository.resolveAttachmentLimit(),
         )
     }
 

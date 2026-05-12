@@ -1,8 +1,6 @@
 package com.android.messaging.ui.conversation.composer.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,9 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,15 +20,12 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.messaging.R
-import com.android.messaging.data.conversation.model.metadata.ConversationSubscription
+import com.android.messaging.data.subscription.model.Subscription
 import com.android.messaging.ui.conversation.CONVERSATION_SIM_SELECTOR_SHEET_TEST_TAG
 import com.android.messaging.ui.conversation.composer.model.ConversationSimSelectorUiState
 import com.android.messaging.ui.conversation.conversationSimSelectorItemTestTag
@@ -103,7 +96,7 @@ private fun ConversationSimSelectorSheetContent(
 
 @Composable
 private fun ConversationSimSelectorRow(
-    subscription: ConversationSubscription,
+    subscription: Subscription,
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -152,36 +145,5 @@ private fun ConversationSimSelectorRow(
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
-    }
-}
-
-@Composable
-private fun ConversationSimAvatar(
-    subscription: ConversationSubscription,
-) {
-    Box(
-        modifier = Modifier
-            .size(size = 40.dp)
-            .clip(shape = CircleShape)
-            .background(
-                color = subscription.resolveAccentColor(),
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = subscription.displaySlotId.toString(),
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.SemiBold,
-            ),
-            color = Color.White,
-        )
-    }
-}
-
-@Composable
-private fun ConversationSubscription.resolveAccentColor(): Color {
-    return when (color) {
-        0 -> MaterialTheme.colorScheme.primary
-        else -> Color(color = color)
     }
 }

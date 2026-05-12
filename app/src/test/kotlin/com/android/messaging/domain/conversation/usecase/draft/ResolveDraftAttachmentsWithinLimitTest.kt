@@ -1,11 +1,9 @@
 package com.android.messaging.domain.conversation.usecase.draft
 
 import com.android.messaging.data.conversation.model.draft.ConversationDraftAttachment
-import com.android.messaging.data.conversation.model.metadata.ConversationSubscription
-import com.android.messaging.data.conversation.repository.ConversationSubscriptionsRepository
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
+import com.android.messaging.data.subscription.repository.SubscriptionsRepository
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -85,27 +83,11 @@ class ResolveDraftAttachmentsWithinLimitTest {
     private fun createResolveDraftAttachmentsWithinLimit(
         attachmentLimit: Int,
     ): ResolveDraftAttachmentsWithinLimit {
+        val subscriptionsRepository = mockk<SubscriptionsRepository>()
+        every { subscriptionsRepository.resolveAttachmentLimit() } returns attachmentLimit
+
         return ResolveDraftAttachmentsWithinLimitImpl(
-            conversationSubscriptionsRepository = FakeConversationSubscriptionsRepository(
-                attachmentLimit = attachmentLimit,
-            ),
+            subscriptionsRepository = subscriptionsRepository,
         )
-    }
-
-    private class FakeConversationSubscriptionsRepository(
-        private val attachmentLimit: Int,
-    ) : ConversationSubscriptionsRepository {
-
-        override fun observeActiveSubscriptions(): Flow<ImmutableList<ConversationSubscription>> {
-            return emptyFlow()
-        }
-
-        override fun resolveAttachmentLimit(): Int {
-            return attachmentLimit
-        }
-
-        override fun resolveMaxMessageSize(selfParticipantId: String): Flow<Int> {
-            return emptyFlow()
-        }
     }
 }

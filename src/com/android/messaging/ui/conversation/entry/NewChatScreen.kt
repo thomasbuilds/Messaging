@@ -50,15 +50,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.messaging.R
 import com.android.messaging.ui.conversation.NEW_CHAT_CONTACT_RESOLVING_INDICATOR_TEST_TAG
 import com.android.messaging.ui.conversation.NEW_CHAT_CREATE_GROUP_NEXT_BUTTON_TEST_TAG
+import com.android.messaging.ui.conversation.composer.model.ConversationSimSelectorUiState
 import com.android.messaging.ui.conversation.newChatContactDestinationRowTestTag
 import com.android.messaging.ui.conversation.newChatContactRowTestTag
 import com.android.messaging.ui.conversation.recipientpicker.RecipientPickerModel
 import com.android.messaging.ui.conversation.recipientpicker.RecipientPickerViewModel
-import com.android.messaging.ui.conversation.recipientpicker.RecipientSelectionContent
-import com.android.messaging.ui.conversation.recipientpicker.RecipientSelectionContentUiState
-import com.android.messaging.ui.conversation.recipientpicker.RecipientSelectionPrimaryActionUiState
-import com.android.messaging.ui.conversation.recipientpicker.RecipientSelectionRowDecorators
-import com.android.messaging.ui.conversation.recipientpicker.RecipientSelectionStrings
+import com.android.messaging.ui.conversation.recipientpicker.component.RecipientSelectionContent
+import com.android.messaging.ui.conversation.recipientpicker.component.RecipientSelectionContentUiState
+import com.android.messaging.ui.conversation.recipientpicker.component.RecipientSelectionPrimaryActionUiState
+import com.android.messaging.ui.conversation.recipientpicker.component.RecipientSelectionRowDecorators
+import com.android.messaging.ui.conversation.recipientpicker.component.RecipientSelectionStrings
+import com.android.messaging.ui.conversation.recipientpicker.component.simselector.NewChatSimSelectorRow
 import com.android.messaging.ui.conversation.recipientpicker.model.RecipientPickerUiState
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -77,9 +79,11 @@ internal fun NewChatScreen(
     onCreateGroupConfirmed: () -> Unit = {},
     onCreateGroupRecipientClick: (String) -> Unit = {},
     onNavigateBack: () -> Unit = {},
+    onSimSelected: (String) -> Unit = {},
     pickerModel: RecipientPickerModel = hiltViewModel<RecipientPickerViewModel>(),
     resolvingRecipientDestination: String? = null,
     selectedGroupRecipientDestinations: ImmutableList<String> = persistentListOf(),
+    simSelectorUiState: ConversationSimSelectorUiState = ConversationSimSelectorUiState(),
 ) {
     val uiState by pickerModel.uiState.collectAsStateWithLifecycle()
     val screenContainerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -116,6 +120,7 @@ internal fun NewChatScreen(
                 .fillMaxSize()
                 .padding(paddingValues = contentPadding),
             pickerUiState = uiState,
+            simSelectorUiState = simSelectorUiState,
             isCreatingGroup = isCreatingGroup,
             isResolvingConversation = isResolvingConversation,
             isResolvingConversationIndicatorVisible = isResolvingConversationIndicatorVisible,
@@ -128,6 +133,7 @@ internal fun NewChatScreen(
             onCreateGroupClick = onCreateGroupClick,
             onCreateGroupConfirmed = onCreateGroupConfirmed,
             onCreateGroupRecipientClick = onCreateGroupRecipientClick,
+            onSimSelected = onSimSelected,
         )
     }
 }
@@ -135,6 +141,7 @@ internal fun NewChatScreen(
 @Composable
 private fun NewChatRecipientSelectionContent(
     pickerUiState: RecipientPickerUiState,
+    simSelectorUiState: ConversationSimSelectorUiState,
     isCreatingGroup: Boolean,
     isResolvingConversation: Boolean,
     isResolvingConversationIndicatorVisible: Boolean,
@@ -147,6 +154,7 @@ private fun NewChatRecipientSelectionContent(
     onCreateGroupClick: () -> Unit,
     onCreateGroupConfirmed: () -> Unit,
     onCreateGroupRecipientClick: (String) -> Unit,
+    onSimSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     RecipientSelectionContent(
@@ -161,22 +169,10 @@ private fun NewChatRecipientSelectionContent(
             queryPrefixText = stringResource(id = R.string.new_chat_recipient_prefix),
             queryPlaceholderText = stringResource(id = R.string.new_chat_query_hint),
         ),
-        rowDecorators = RecipientSelectionRowDecorators(
-            recipientRowTestTag = { item ->
-                newChatContactRowTestTag(contactId = item.id)
-            },
-            destinationRowTestTag = { item, destination ->
-                newChatContactDestinationRowTestTag(
-                    contactId = item.id,
-                    destination = destination,
-                )
-            },
-            showRecipientTrailingIndicator = { _, destination ->
-                !isCreatingGroup &&
-                    isResolvingConversationIndicatorVisible &&
-                    resolvingRecipientDestination == destination
-            },
-            trailingIndicatorTestTag = NEW_CHAT_CONTACT_RESOLVING_INDICATOR_TEST_TAG,
+        rowDecorators = newChatRecipientSelectionRowDecorators(
+            isCreatingGroup = isCreatingGroup,
+            isResolvingConversationIndicatorVisible = isResolvingConversationIndicatorVisible,
+            resolvingRecipientDestination = resolvingRecipientDestination,
         ),
         onRecipientDestinationClick = { _, destination ->
             when {
@@ -195,12 +191,42 @@ private fun NewChatRecipientSelectionContent(
                 else -> onContactLongClick(destination)
             }
         },
+        simSelectorSlot = {
+            NewChatSimSelectorRow(
+                uiState = simSelectorUiState,
+                onSimSelected = onSimSelected,
+            )
+        },
         topListContent = {
             NewChatRecipientSelectionTopListContent(
                 isCreatingGroup = isCreatingGroup,
                 onCreateGroupClick = onCreateGroupClick,
             )
         },
+    )
+}
+
+private fun newChatRecipientSelectionRowDecorators(
+    isCreatingGroup: Boolean,
+    isResolvingConversationIndicatorVisible: Boolean,
+    resolvingRecipientDestination: String?,
+): RecipientSelectionRowDecorators {
+    return RecipientSelectionRowDecorators(
+        recipientRowTestTag = { item ->
+            newChatContactRowTestTag(contactId = item.id)
+        },
+        destinationRowTestTag = { item, destination ->
+            newChatContactDestinationRowTestTag(
+                contactId = item.id,
+                destination = destination,
+            )
+        },
+        showRecipientTrailingIndicator = { _, destination ->
+            !isCreatingGroup &&
+                isResolvingConversationIndicatorVisible &&
+                resolvingRecipientDestination == destination
+        },
+        trailingIndicatorTestTag = NEW_CHAT_CONTACT_RESOLVING_INDICATOR_TEST_TAG,
     )
 }
 

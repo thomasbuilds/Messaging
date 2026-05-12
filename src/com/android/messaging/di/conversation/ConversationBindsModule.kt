@@ -14,8 +14,6 @@ import com.android.messaging.data.conversation.repository.ConversationDraftsRepo
 import com.android.messaging.data.conversation.repository.ConversationDraftsRepositoryImpl
 import com.android.messaging.data.conversation.repository.ConversationParticipantsRepository
 import com.android.messaging.data.conversation.repository.ConversationParticipantsRepositoryImpl
-import com.android.messaging.data.conversation.repository.ConversationSubscriptionsRepository
-import com.android.messaging.data.conversation.repository.ConversationSubscriptionsRepositoryImpl
 import com.android.messaging.data.conversation.repository.ConversationVCardMetadataRepository
 import com.android.messaging.data.conversation.repository.ConversationVCardMetadataRepositoryImpl
 import com.android.messaging.data.conversation.repository.ConversationsRepository
@@ -26,6 +24,8 @@ import com.android.messaging.data.media.repository.ConversationAttachmentsReposi
 import com.android.messaging.data.media.repository.ConversationAttachmentsRepositoryImpl
 import com.android.messaging.data.media.repository.ConversationMediaRepository
 import com.android.messaging.data.media.repository.ConversationMediaRepositoryImpl
+import com.android.messaging.data.subscription.repository.SubscriptionsRepository
+import com.android.messaging.data.subscription.repository.SubscriptionsRepositoryImpl
 import com.android.messaging.domain.contacts.usecase.IsReadContactsPermissionGranted
 import com.android.messaging.domain.contacts.usecase.IsReadContactsPermissionGrantedImpl
 import com.android.messaging.domain.conversation.usecase.action.CheckConversationActionRequirements
@@ -188,9 +188,9 @@ internal abstract class ConversationBindsModule {
 
     @Binds
     @Reusable
-    abstract fun bindConversationSubscriptionsRepository(
-        impl: ConversationSubscriptionsRepositoryImpl,
-    ): ConversationSubscriptionsRepository
+    abstract fun bindSubscriptionsRepository(
+        impl: SubscriptionsRepositoryImpl,
+    ): SubscriptionsRepository
 
     @Binds
     @Reusable

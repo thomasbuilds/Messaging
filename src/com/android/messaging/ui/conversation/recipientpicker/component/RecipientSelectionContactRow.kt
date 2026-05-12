@@ -1,4 +1,4 @@
-package com.android.messaging.ui.conversation.recipientpicker
+package com.android.messaging.ui.conversation.recipientpicker.component
 
 import android.provider.ContactsContract.CommonDataKinds.Email
 import android.provider.ContactsContract.CommonDataKinds.Phone

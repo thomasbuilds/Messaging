@@ -12,7 +12,7 @@ import android.graphics.Paint
 import android.net.Uri
 import androidx.core.graphics.createBitmap
 import androidx.core.net.toUri
-import com.android.messaging.data.conversation.repository.ConversationSubscriptionsRepository
+import com.android.messaging.data.subscription.repository.SubscriptionsRepository
 import com.android.messaging.datamodel.DataModel
 import com.android.messaging.datamodel.DatabaseHelper
 import com.android.messaging.datamodel.DatabaseHelper.ConversationColumns
@@ -70,7 +70,7 @@ private data class SeedVCards(
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 private interface SeedSubscriptionsEntryPoint {
-    fun subscriptionsRepository(): ConversationSubscriptionsRepository
+    fun subscriptionsRepository(): SubscriptionsRepository
 }
 
 fun seedTestData(context: Context) {

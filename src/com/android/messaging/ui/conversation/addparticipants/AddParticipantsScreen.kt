@@ -29,11 +29,11 @@ import com.android.messaging.ui.conversation.addParticipantsContactDestinationRo
 import com.android.messaging.ui.conversation.addParticipantsContactRowTestTag
 import com.android.messaging.ui.conversation.addparticipants.model.AddParticipantsEffect
 import com.android.messaging.ui.conversation.addparticipants.model.AddParticipantsUiState
-import com.android.messaging.ui.conversation.recipientpicker.RecipientSelectionContent
-import com.android.messaging.ui.conversation.recipientpicker.RecipientSelectionContentUiState
-import com.android.messaging.ui.conversation.recipientpicker.RecipientSelectionPrimaryActionUiState
-import com.android.messaging.ui.conversation.recipientpicker.RecipientSelectionRowDecorators
-import com.android.messaging.ui.conversation.recipientpicker.RecipientSelectionStrings
+import com.android.messaging.ui.conversation.recipientpicker.component.RecipientSelectionContent
+import com.android.messaging.ui.conversation.recipientpicker.component.RecipientSelectionContentUiState
+import com.android.messaging.ui.conversation.recipientpicker.component.RecipientSelectionPrimaryActionUiState
+import com.android.messaging.ui.conversation.recipientpicker.component.RecipientSelectionRowDecorators
+import com.android.messaging.ui.conversation.recipientpicker.component.RecipientSelectionStrings
 import com.android.messaging.util.UiUtils
 import kotlinx.collections.immutable.toImmutableSet
 
