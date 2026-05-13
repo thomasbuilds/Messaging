@@ -46,6 +46,7 @@ android {
         versionCode = 20000000 + 13
         versionName = "13"
         minSdk = 36
+        // Do not upgrade until Compose migration finished to prevent edge-to-edge issues
         targetSdk = 35
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
