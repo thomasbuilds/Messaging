@@ -31,6 +31,8 @@ import com.android.messaging.ui.conversation.audio.formatConversationAudioDurati
 import com.android.messaging.ui.conversation.mediapicker.ConversationCaptureMode
 import com.android.messaging.ui.conversation.mediapicker.camera.ConversationPhotoFlashMode
 import com.android.messaging.ui.conversation.mediapicker.component.PickerOverlayIconButton
+import com.android.messaging.ui.conversation.mediapicker.component.pickerOverlayContainerColor
+import com.android.messaging.ui.conversation.mediapicker.component.pickerOverlayContentColor
 
 @Composable
 internal fun ConversationMediaCaptureTopBar(
@@ -147,7 +149,7 @@ private fun ConversationMediaCaptureModeToggle(
 ) {
     Surface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f),
+        color = pickerOverlayContainerColor(alpha = 0.4f),
     ) {
         Row(
             modifier = Modifier
@@ -190,7 +192,7 @@ private fun ConversationMediaCaptureModeChip(
         shape = CircleShape,
         color = when {
             isSelected -> MaterialTheme.colorScheme.secondaryContainer
-            else -> MaterialTheme.colorScheme.scrim.copy(alpha = 0f)
+            else -> pickerOverlayContainerColor(alpha = 0f)
         },
     ) {
         Box(
@@ -202,7 +204,7 @@ private fun ConversationMediaCaptureModeChip(
                 text = label,
                 color = when {
                     isSelected -> MaterialTheme.colorScheme.onSecondaryContainer
-                    else -> MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.9f)
+                    else -> pickerOverlayContentColor(alpha = 0.9f)
                 },
                 style = MaterialTheme.typography.labelLarge,
             )

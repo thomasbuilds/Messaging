@@ -1,12 +1,14 @@
 package com.android.messaging.ui.conversation.mediapicker
 
 import android.annotation.SuppressLint
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.widget.photopicker.EmbeddedPhotoPickerFeatureInfo
 import androidx.annotation.RequiresExtension
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -121,7 +123,12 @@ private fun rememberVisualMediaAttachments(
 @RequiresExtension(extension = Build.VERSION_CODES.UPSIDE_DOWN_CAKE, version = 15)
 @Composable
 private fun rememberConversationEmbeddedPhotoPickerFeatureInfo(): EmbeddedPhotoPickerFeatureInfo {
-    return remember {
+    val themeNightMode = when {
+        isSystemInDarkTheme() -> Configuration.UI_MODE_NIGHT_YES
+        else -> Configuration.UI_MODE_NIGHT_NO
+    }
+
+    return remember(themeNightMode) {
         EmbeddedPhotoPickerFeatureInfo.Builder()
             .setMaxSelectionLimit(MediaStore.getPickImagesMaxLimit())
             .setMimeTypes(
@@ -131,6 +138,7 @@ private fun rememberConversationEmbeddedPhotoPickerFeatureInfo(): EmbeddedPhotoP
                 ),
             )
             .setOrderedSelection(true)
+            .setThemeNightMode(themeNightMode)
             .build()
     }
 }

@@ -42,6 +42,8 @@ import com.android.messaging.R
 import com.android.messaging.ui.conversation.attachment.ui.ConversationMediaThumbnail
 import com.android.messaging.ui.conversation.composer.model.ComposerAttachmentUiModel
 import com.android.messaging.ui.conversation.mediapicker.component.PickerOverlayBackgroundButton
+import com.android.messaging.ui.conversation.mediapicker.component.pickerOverlayContainerColor
+import com.android.messaging.ui.conversation.mediapicker.component.pickerOverlayContentColor
 import kotlin.math.absoluteValue
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
@@ -257,13 +259,13 @@ private fun ConversationMediaReviewVideoBadge(
     Surface(
         modifier = modifier,
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f),
+        color = pickerOverlayContainerColor(alpha = 0.5f),
     ) {
         Icon(
             modifier = Modifier.padding(12.dp),
             imageVector = Icons.Rounded.PlayArrow,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.inverseOnSurface,
+            tint = pickerOverlayContentColor(),
         )
     }
 }
@@ -286,7 +288,7 @@ private fun ConversationMediaReviewDeleteButton(
             scaleX = scale
             scaleY = scale
         },
-        containerColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f),
+        containerColor = pickerOverlayContainerColor(alpha = 0.5f),
         contentDescription = stringResource(
             id = R.string.conversation_media_picker_remove_attachment_content_description,
         ),

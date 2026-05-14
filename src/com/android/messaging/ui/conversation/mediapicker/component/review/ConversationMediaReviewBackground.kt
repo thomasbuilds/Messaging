@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.core.net.toUri
 import com.android.messaging.ui.conversation.attachment.ui.loadConversationMediaThumbnailBitmap
 import com.android.messaging.ui.conversation.composer.model.ComposerAttachmentUiModel
+import com.android.messaging.ui.conversation.mediapicker.component.pickerOverlayContainerColor
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -69,7 +70,7 @@ private fun ConversationMediaReviewBackgroundContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f),
+                        color = pickerOverlayContainerColor(alpha = 0.5f),
                     ),
             )
         }

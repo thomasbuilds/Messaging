@@ -48,6 +48,7 @@ import com.android.messaging.ui.conversation.composer.model.ComposerAttachmentUi
 import com.android.messaging.ui.conversation.composer.model.ConversationSendActionButtonMode
 import com.android.messaging.ui.conversation.composer.ui.ConversationSendActionButton
 import com.android.messaging.ui.conversation.mediapicker.component.PickerOverlayIconButton
+import com.android.messaging.ui.conversation.mediapicker.component.pickerOverlayContentColor
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
@@ -199,7 +200,7 @@ private fun ConversationMediaReviewTopBar(
             modifier = Modifier
                 .weight(weight = 1f),
             text = conversationTitle.orEmpty(),
-            color = MaterialTheme.colorScheme.inverseOnSurface,
+            color = pickerOverlayContentColor(),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.titleMedium,
