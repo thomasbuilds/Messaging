@@ -4,6 +4,7 @@ import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.SurfaceRequest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,7 @@ import com.android.messaging.ui.conversation.mediapicker.component.PermissionFal
 internal fun ConversationMediaCameraPreviewSurface(
     modifier: Modifier = Modifier,
     cameraPermissionGranted: Boolean,
+    contentPadding: PaddingValues,
     surfaceRequest: SurfaceRequest?,
     onRequestCameraPermission: () -> Unit,
 ) {
@@ -37,6 +39,7 @@ internal fun ConversationMediaCameraPreviewSurface(
         when {
             !cameraPermissionGranted -> {
                 ConversationMediaCameraPermissionFallback(
+                    contentPadding = contentPadding,
                     onRequestCameraPermission = onRequestCameraPermission,
                 )
             }
@@ -56,11 +59,13 @@ internal fun ConversationMediaCameraPreviewSurface(
 
 @Composable
 private fun ConversationMediaCameraPermissionFallback(
+    contentPadding: PaddingValues,
     onRequestCameraPermission: () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .padding(paddingValues = contentPadding)
             .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -109,6 +114,7 @@ internal fun ConversationMediaCaptureContent(
     modifier: Modifier = Modifier,
     audioPermissionGranted: Boolean,
     captureMode: ConversationCaptureMode,
+    cameraPermissionGranted: Boolean,
     hasFlashUnit: Boolean,
     isPhotoCaptureInProgress: Boolean,
     isRecording: Boolean,
@@ -133,7 +139,7 @@ internal fun ConversationMediaCaptureContent(
                 .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             captureMode = captureMode,
-            hasFlashUnit = hasFlashUnit,
+            hasFlashUnit = cameraPermissionGranted && hasFlashUnit,
             isPhotoCaptureInProgress = isPhotoCaptureInProgress,
             isRecording = isRecording,
             photoFlashMode = photoFlashMode,
@@ -141,32 +147,34 @@ internal fun ConversationMediaCaptureContent(
             onFlashClick = onToggleFlashClick,
         )
 
-        ConversationMediaCaptureControls(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = 20.dp, vertical = 24.dp),
-            captureMode = captureMode,
-            isPhotoCaptureInProgress = isPhotoCaptureInProgress,
-            isRecording = isRecording,
-            recordingDurationMillis = recordingDurationMillis,
-            onCaptureClick = {
-                when (captureMode) {
-                    ConversationCaptureMode.Video -> {
-                        when {
-                            !isRecording && !audioPermissionGranted -> {
-                                onRequestAudioPermission()
+        if (cameraPermissionGranted) {
+            ConversationMediaCaptureControls(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                captureMode = captureMode,
+                isPhotoCaptureInProgress = isPhotoCaptureInProgress,
+                isRecording = isRecording,
+                recordingDurationMillis = recordingDurationMillis,
+                onCaptureClick = {
+                    when (captureMode) {
+                        ConversationCaptureMode.Video -> {
+                            when {
+                                !isRecording && !audioPermissionGranted -> {
+                                    onRequestAudioPermission()
+                                }
+
+                                else -> onVideoCaptureClick()
                             }
-
-                            else -> onVideoCaptureClick()
                         }
-                    }
 
-                    else -> onPhotoCaptureClick()
-                }
-            },
-            onPhotoModeClick = onPhotoModeClick,
-            onSwitchCameraClick = onSwitchCameraClick,
-            onVideoModeClick = onVideoModeClick,
-        )
+                        else -> onPhotoCaptureClick()
+                    }
+                },
+                onPhotoModeClick = onPhotoModeClick,
+                onSwitchCameraClick = onSwitchCameraClick,
+                onVideoModeClick = onVideoModeClick,
+            )
+        }
     }
 }

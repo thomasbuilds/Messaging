@@ -36,6 +36,7 @@ internal fun ConversationMediaPickerCaptureScene(
                 .fillMaxSize(),
             cameraController = cameraController,
             cameraPermissionGranted = cameraPermissionGranted,
+            contentPadding = contentPadding,
             onRequestCameraPermission = onRequestCameraPermission,
         )
 
@@ -46,6 +47,7 @@ internal fun ConversationMediaPickerCaptureScene(
             cameraController = cameraController,
             audioPermissionGranted = audioPermissionGranted,
             captureMode = captureMode,
+            cameraPermissionGranted = cameraPermissionGranted,
             onClose = onClose,
             onRequestAudioPermission = onRequestAudioPermission,
             onAttachmentStartRequest = onAttachmentStartRequest,
@@ -61,6 +63,7 @@ private fun ConversationMediaCameraPreviewRoute(
     modifier: Modifier = Modifier,
     cameraController: ConversationCameraController,
     cameraPermissionGranted: Boolean,
+    contentPadding: PaddingValues,
     onRequestCameraPermission: () -> Unit,
 ) {
     val surfaceRequest = cameraController.surfaceRequest.collectAsStateWithLifecycle()
@@ -68,6 +71,7 @@ private fun ConversationMediaCameraPreviewRoute(
     ConversationMediaCameraPreviewSurface(
         modifier = modifier,
         cameraPermissionGranted = cameraPermissionGranted,
+        contentPadding = contentPadding,
         surfaceRequest = surfaceRequest.value,
         onRequestCameraPermission = onRequestCameraPermission,
     )
