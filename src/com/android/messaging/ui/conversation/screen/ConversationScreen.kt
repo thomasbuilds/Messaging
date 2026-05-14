@@ -1,11 +1,14 @@
 package com.android.messaging.ui.conversation.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -21,10 +24,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Rect as ComposeRect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.messaging.R
@@ -44,6 +50,12 @@ import com.android.messaging.ui.conversation.screen.model.ConversationScreenScaf
 import kotlinx.collections.immutable.ImmutableList
 
 private const val SMOOTH_SCROLL_JUMP_THRESHOLD = 15
+private val CONVERSATION_CONTENT_SHAPE = RoundedCornerShape(
+    topStart = 28.dp,
+    topEnd = 28.dp,
+    bottomStart = 0.dp,
+    bottomEnd = 0.dp,
+)
 
 @Composable
 internal fun ConversationScreen(
@@ -333,12 +345,15 @@ private fun ConversationScreenContent(
     onMessageResendClick: (String) -> Unit,
     onSimSelectorClick: () -> Unit,
 ) {
+    val contentBackdropColor = conversationScreenContentBackdropColor(uiState = uiState)
+
     when (val messagesState = uiState.messages) {
         is ConversationMessagesUiState.Loading -> {
             Box(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(paddingValues = contentPadding),
+                modifier = modifier.conversationScreenContentModifier(
+                    contentPadding = contentPadding,
+                    backdropColor = contentBackdropColor,
+                ),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator(
@@ -372,7 +387,10 @@ private fun ConversationScreenContent(
             )
 
             ConversationMessages(
-                modifier = modifier.padding(paddingValues = contentPadding),
+                modifier = modifier.conversationScreenContentModifier(
+                    contentPadding = contentPadding,
+                    backdropColor = contentBackdropColor,
+                ),
                 messages = messagesState.messages,
                 listState = messagesListState,
                 selectedMessageIds = uiState.selection.selectedMessageIds,
@@ -388,6 +406,28 @@ private fun ConversationScreenContent(
                 onSimSelectorClick = onSimSelectorClick,
             )
         }
+    }
+}
+
+@Composable
+private fun Modifier.conversationScreenContentModifier(
+    contentPadding: PaddingValues,
+    backdropColor: Color,
+): Modifier {
+    return this
+        .padding(paddingValues = contentPadding)
+        .background(color = backdropColor)
+        .clip(shape = CONVERSATION_CONTENT_SHAPE)
+        .background(color = MaterialTheme.colorScheme.background)
+}
+
+@Composable
+private fun conversationScreenContentBackdropColor(
+    uiState: ConversationScreenScaffoldUiState,
+): Color {
+    return when {
+        uiState.selection.isSelectionMode -> MaterialTheme.colorScheme.secondaryContainer
+        else -> MaterialTheme.colorScheme.surfaceContainer
     }
 }
 
