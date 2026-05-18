@@ -62,16 +62,18 @@ internal class ConversationComposerUiStateMapperImpl @Inject constructor() :
             !draft.isSending &&
             draftState.pendingAttachments.isEmpty()
 
+        val simSelector = buildSimSelectorUiState(
+            subscriptions = subscriptions,
+            selfParticipantId = draft.selfParticipantId,
+        )
+
         return ConversationComposerUiState(
             audioRecording = audioRecording,
             attachments = attachments,
             messageText = draft.messageText,
             subjectText = draft.subjectText,
             selfParticipantId = draft.selfParticipantId,
-            simSelector = buildSimSelectorUiState(
-                subscriptions = subscriptions,
-                selfParticipantId = draft.selfParticipantId,
-            ),
+            simSelector = simSelector,
             isMessageFieldEnabled = isMessageFieldEnabled,
             isAttachmentActionEnabled = isAttachmentActionEnabled,
             isRecordActionEnabled = isRecordActionEnabled,
@@ -84,6 +86,8 @@ internal class ConversationComposerUiStateMapperImpl @Inject constructor() :
             segmentCounter = buildSegmentCounterUiState(
                 draft = draft,
                 sendProtocol = visibleSendProtocol,
+                selfSubId = simSelector.selectedSubscription?.subId
+                    ?: ParticipantData.DEFAULT_SELF_SUB_ID,
             ),
             isCheckingDraft = draft.isCheckingDraft,
             isSending = draft.isSending,
@@ -94,6 +98,7 @@ internal class ConversationComposerUiStateMapperImpl @Inject constructor() :
     private fun buildSegmentCounterUiState(
         draft: ConversationDraft,
         sendProtocol: ConversationDraftSendProtocol,
+        selfSubId: Int,
     ): ConversationSegmentCounterUiState? {
         val isSms = sendProtocol == ConversationDraftSendProtocol.SMS
         val messageText = draft.messageText
@@ -103,7 +108,7 @@ internal class ConversationComposerUiStateMapperImpl @Inject constructor() :
         }
 
         val stats = MessageTextStats().apply {
-            updateMessageTextStats(ParticipantData.DEFAULT_SELF_SUB_ID, messageText)
+            updateMessageTextStats(selfSubId, messageText)
         }
 
         val messageCount = stats.numMessagesToBeSent
