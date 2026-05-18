@@ -19,6 +19,7 @@ import com.android.messaging.datamodel.data.ParticipantData
 import com.android.messaging.ui.conversation.messages.model.message.ConversationMessagePartUiModel
 import com.android.messaging.ui.conversation.messages.model.message.ConversationMessageUiModel
 import com.android.messaging.ui.core.AppTheme
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -214,7 +215,7 @@ private fun outgoingMessage(text: String): ConversationMessageUiModel {
         messageId = MESSAGE_ID,
         conversationId = CONVERSATION_ID,
         text = text,
-        parts = listOf(
+        parts = persistentListOf(
             ConversationMessagePartUiModel.Text(
                 text = text,
             ),

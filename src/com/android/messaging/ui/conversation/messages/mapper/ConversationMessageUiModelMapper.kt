@@ -11,6 +11,8 @@ import com.android.messaging.ui.conversation.messages.model.message.MmsDownloadU
 import com.android.messaging.util.ContentType
 import com.android.messaging.util.LogUtil
 import javax.inject.Inject
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 internal interface ConversationMessageUiModelMapper {
     fun map(data: ConversationMessageData): ConversationMessageUiModel
@@ -25,7 +27,12 @@ internal class ConversationMessageUiModelMapperImpl @Inject constructor(
             messageId = data.messageId ?: "",
             conversationId = data.conversationId ?: "",
             text = data.text,
-            parts = data.parts?.map(::mapPart) ?: emptyList(),
+            parts = data
+                .parts
+                ?.asSequence()
+                ?.map(::mapPart)
+                ?.toImmutableList()
+                ?: persistentListOf(),
             sentTimestamp = data.sentTimeStamp,
             receivedTimestamp = data.receivedTimeStamp,
             displayTimestamp = conversationMessageDisplayTimestamp(

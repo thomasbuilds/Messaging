@@ -158,12 +158,16 @@ internal class ConversationMessagesDelegateImpl @Inject constructor(
         vCardAttachmentMetadata: Map<String, ConversationVCardAttachmentMetadata>,
     ): ConversationMessageUiModel {
         return message.copy(
-            parts = message.parts.map { part ->
-                updateMessagePartUiModelWithVCardUiModel(
-                    part = part,
-                    vCardAttachmentMetadata = vCardAttachmentMetadata,
-                )
-            },
+            parts = message
+                .parts
+                .asSequence()
+                .map { part ->
+                    updateMessagePartUiModelWithVCardUiModel(
+                        part = part,
+                        vCardAttachmentMetadata = vCardAttachmentMetadata,
+                    )
+                }
+                .toImmutableList(),
         )
     }
 

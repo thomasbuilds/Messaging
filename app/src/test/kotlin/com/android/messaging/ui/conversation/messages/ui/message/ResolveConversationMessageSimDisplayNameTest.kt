@@ -4,6 +4,7 @@ import com.android.messaging.datamodel.data.ParticipantData
 import com.android.messaging.ui.conversation.messages.model.message.ConversationMessagePartUiModel
 import com.android.messaging.ui.conversation.messages.model.message.ConversationMessageUiModel
 import com.android.messaging.ui.conversation.messages.model.message.MmsDownloadUiModel
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -142,7 +143,7 @@ private fun message(
         messageId = "id-${selfParticipantId.orEmpty()}-$isIncoming",
         conversationId = "conversation",
         text = "text",
-        parts = listOf(
+        parts = persistentListOf(
             ConversationMessagePartUiModel.Text(text = "text"),
         ),
         sentTimestamp = 0L,
