@@ -205,12 +205,6 @@ public abstract class UIIntents {
     public abstract void launchSaveVCardToContactsActivity(Context context, Uri vcardUri);
 
     /**
-     * Launch an activity to let the user select & unselect the list of attachments to send.
-     */
-    public abstract void launchAttachmentChooserActivity(final Activity activity,
-            final String conversationId, final int requestCode);
-
-    /**
      * Launch full screen video viewer.
      */
     public abstract void launchFullScreenVideoViewer(Context context, Uri videoUri);

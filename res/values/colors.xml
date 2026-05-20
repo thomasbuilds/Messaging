@@ -62,8 +62,6 @@
     <color name="message_text_color_outgoing">#ff323232</color>
     <color name="conversation_background">#eeeeee</color>
     <color name="conversation_edge_effect">#9d9d9d</color>
-    <color name="compose_message_send_color">@color/primary_color</color>
-    <color name="compose_message_send_color_pressed">#999999</color>
     <color name="message_bubble_color_outgoing">#ffffffff</color>
     <color name="message_error_bubble_color_incoming">#e2e2e2</color>
     <color name="message_audio_button_color_incoming">#ffffffff</color>
@@ -85,8 +83,6 @@
     <color name="chips_dropdown_background_pressed">#ededed</color>
 
     <color name="translucent_white">#80ffffff</color>
-
-    <color name="attachment_preview_more_items_text_background">#44000000</color>
 
     <color name="letter_tile_font_color">#ffffff</color>
 
@@ -110,18 +106,12 @@
     <color name="fab_pressed_color">#3ea4dc</color>
     <color name="fab_ripple">#40ffffff</color>
 
-    <color name="message_body_size_text_color">#555555</color>
-    <color name="mms_indicator_color">#8BC34A</color>
     <color name="list_empty_text">#6d6d6d</color>
     <color name="low_storage_action_item_color">#ff000000</color>
     <color name="unblock_item_text_color">@color/primary_color</color>
     <color name="open_conversation_animation_background_shadow">#40000000</color>
     <color name="compose_notification_bar_background">@color/primary_color</color>
 
-    <color name="sim_selector_text_primary">#4d4d4d</color>
-    <color name="sim_selector_text_secondary">#999999</color>
-    <color name="sim_selector_background_end">#cceeeeee</color>
-    <color name="sim_selector_background_start">#ffeeeeee</color>
     <color name="sim_indicator_color_light">#ffffff</color>
     <color name="sim_indicator_color_dark">#323232</color>
 
@@ -139,9 +129,6 @@
     <color name="widget_background_color">#ffffff</color>
     <color name="ripple_material_light">#40000000</color>
     <color name="widget_conversation_title_color">#FFFFFF</color>
-
-    <color name="attachment_chooser_audio_background">#eeeeee</color>
-    <color name="attachment_chooser_vcard_background">#eeeeee</color>
 
     <color name="fastscroll_track_color">#1e000000</color>
     <color name="fastscroll_thumb_color">#42000000</color>

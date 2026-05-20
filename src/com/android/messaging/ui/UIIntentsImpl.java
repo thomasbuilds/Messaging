@@ -46,7 +46,6 @@ import com.android.messaging.receiver.ConversationReadReceiver;
 import com.android.messaging.receiver.NotificationReceiver;
 import com.android.messaging.sms.MmsSmsUtils;
 import com.android.messaging.ui.appsettings.SettingsActivity;
-import com.android.messaging.ui.attachmentchooser.AttachmentChooserActivity;
 import com.android.messaging.ui.conversation.ConversationActivity;
 import com.android.messaging.ui.conversation.LaunchConversationActivity;
 import com.android.messaging.ui.conversationlist.ArchivedConversationListActivity;
@@ -277,14 +276,6 @@ public class UIIntentsImpl extends UIIntents {
         intent.setDataAndType(vcardUri, ContentType.TEXT_VCARD.toLowerCase());
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startExternalActivity(context, intent);
-    }
-
-    @Override
-    public void launchAttachmentChooserActivity(final Activity activity,
-            final String conversationId, final int requestCode) {
-        final Intent intent = new Intent(activity, AttachmentChooserActivity.class);
-        intent.putExtra(UI_INTENT_EXTRA_CONVERSATION_ID, conversationId);
-        activity.startActivityForResult(intent, requestCode);
     }
 
     @Override

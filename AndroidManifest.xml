@@ -264,19 +264,6 @@
                 android:value=".ui.conversation.ConversationActivity" />
         </activity>
 
-        <!-- Attachment chooser -->
-        <activity
-            android:name=".ui.attachmentchooser.AttachmentChooserActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden"
-            android:screenOrientation="user"
-            android:label="@string/attachment_chooser_activity_title"
-            android:theme="@style/BugleTheme"
-            android:parentActivityName="com.android.messaging.ui.conversation.ConversationActivity">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.android.messaging.ui.conversation.ConversationActivity" />
-        </activity>
-
         <!-- Test activity that we use to host fragments/views. Unfortunately, apparently necessary
              because Android framework test cases want activity to be in the instrumented package.
              See http://developer.android.com/reference/android/test/ActivityInstrumentationTestCase2.html
